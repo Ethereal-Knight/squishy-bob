@@ -1,0 +1,52 @@
+export function drawGlitchEnemy(ctx, e) {
+    ctx.save();
+    let jitterX = (Math.random() - 0.5) * 4;
+    let jitterY = (Math.random() - 0.5) * 4;
+    let ex = e.x + jitterX;
+    let ey = e.y + jitterY;
+    ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+    ctx.fillRect(ex - 4, ey + 2, e.w, e.h);
+    ctx.fillStyle = "rgba(255, 0, 85, 0.5)";
+    ctx.fillRect(ex + 4, ey - 2, e.w, e.h);
+    let bodyGrad = ctx.createLinearGradient(ex, ey, ex, ey + e.h);
+    bodyGrad.addColorStop(0, "#2a0018");
+    bodyGrad.addColorStop(1, "#0a010d");
+    ctx.fillStyle = bodyGrad;
+    ctx.fillRect(ex, ey, e.w, e.h);
+    ctx.strokeStyle = "#ff0055";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "#ff0055";
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(ex, ey, e.w, e.h);
+    if (Math.random() > 0.25) {
+        ctx.fillStyle = Math.random() > 0.5 ? "#00f0ff" : "#ff0055";
+        let sliceY = ey + Math.random() * (e.h - 4);
+        let sliceH = Math.random() * 4 + 2;
+        let sliceOffset = (Math.random() - 0.5) * 12;
+        ctx.fillRect(ex + sliceOffset, sliceY, e.w, sliceH);
+    }
+    ctx.fillStyle = "rgba(255, 0, 85, 0.2)";
+    let scanY = (Date.now() / 15) % e.h;
+    ctx.fillRect(ex, ey + scanY, e.w, 3);
+    ctx.fillStyle = "#ff0055";
+    ctx.shadowColor = "#ff0055";
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(ex + 4, ey + 7);
+    ctx.lineTo(ex + e.w - 4, ey + 7);
+    ctx.lineTo(ex + e.w - 7, ey + 13);
+    ctx.lineTo(ex + 7, ey + 13);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    let eyeOffset = Math.sin(Date.now() / 60) * 2;
+    ctx.fillRect(ex + 7 + eyeOffset, ey + 9, 3, 3);
+    ctx.fillRect(ex + e.w - 10 + eyeOffset, ey + 9, 3, 3);
+    ctx.fillStyle = "#00f0ff";
+    ctx.shadowColor = "#00f0ff";
+    ctx.shadowBlur = 6;
+    let floatOffset = Math.sin(Date.now() / 120) * 3;
+    ctx.fillRect(ex - 3, ey - 3 + floatOffset, 4, 4);
+    ctx.fillRect(ex + e.w - 1, ey - 3 - floatOffset, 4, 4);
+    ctx.restore();
+}

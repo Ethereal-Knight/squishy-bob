@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html _site/
-          cp -R css js levels _site/
+          cp -R css js _site/
           if [ -f "squishy Bob v1.3.html" ]; then
             cp "squishy Bob v1.3.html" _site/
           fi
