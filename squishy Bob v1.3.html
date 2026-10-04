@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squishy Bob's Neon Escape - Glitch & Intro Edition</title>
+    <style>
+        body {
+            margin: 0; 
+            padding: 0; 
+            background-color: #050510; 
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+        }
+
+        canvas { 
+            background-color: #080816; 
+            border: 4px solid #0ff; 
+            border-radius: 8px; 
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.4); 
+        }
+        
+        #main-menu {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(8, 8, 20, 0.95); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 8px; 
+            z-index: 10;
+        }
+
+        #main-menu h1 { 
+            color: #fff; 
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
+            font-size: 44px; 
+            margin: 0; 
+            letter-spacing: 2px;
+        }
+
+        #main-menu h2 { 
+            color: #ff00ff; 
+            text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff; 
+            margin-top: 5px; 
+            margin-bottom: 20px;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+
+        .menu-btn { 
+            margin-top: 10px; 
+            padding: 12px 35px; 
+            font-size: 15px; 
+            font-family: inherit;
+            font-weight: bold;
+            background: rgba(0, 255, 255, 0.05); 
+            color: #0ff; 
+            border: 2px solid #0ff; 
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); 
+            cursor: pointer; 
+            transition: all 0.2s ease-in-out;
+            width: 320px;
+            text-transform: uppercase;
+            border-radius: 4px;
+        }
+
+        .menu-btn:hover { 
+            background: #0ff; 
+            color: #000; 
+            box-shadow: 0 0 20px #0ff;
+            transform: scale(1.03);
+        }
+
+        .controls { 
+            margin-top: 12px; 
+            color: #0ff; 
+            font-size: 13px; 
+            text-shadow: 0 0 5px #0ff; 
+            text-align: center;
+        }
+
+        kbd { 
+            background: #111; 
+            padding: 3px 6px; 
+            border-radius: 4px; 
+            color: #ff00ff; 
+            font-weight: bold; 
+            border: 1px solid #ff00ff; 
+            box-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div id="main-menu">
+            <h1>SQUISHY BOB</h1>
+            <h2>Cyber Maze & Glitch Security</h2>
+            <button class="menu-btn" onclick="startCampaignWithIntro()">Campaign (Maze & Patrols)</button>
+            <button class="menu-btn" onclick="startGame('ENDLESS')">Endless Cyber Run</button>
+            <button class="menu-btn" onclick="showAchievements()">Trophies & Stats</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        Move: <kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> | Jump / Double Jump: <kbd>Space</kbd> / <kbd>W</kbd> / <kbd>↑</kbd> | Squish Flat: <kbd>S</kbd> / <kbd>↓</kbd> | Menu: <kbd>M</kbd>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const menuDiv = document.getElementById("main-menu");
+
+        let gameState = "MENU"; 
+        let currentLevel = 0;
+        let endlessDistance = 0;
+        let endlessSpeed = 3.5;
+        
+        let introTimer = 0;
+        const introMaxTimer = 160;
+        let introTextIndex = 0;
+        const introMessages = [
+            "> INITIATING BOBSHELL v2.5...",
+            "> LOADING NEON MAZE PROTOCOLS...",
+            "> CORRUPTED DATA DETECTED (GLITCH ENEMIES)...",
+            "> SQUISH ENGINE ENGAGED!"
+        ];
+
+        const keys = { w: false, a: false, s: false, d: false, space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        let spaceWasPressed = false;
+        let upWasPressed = false;
+
+        window.addEventListener("keydown", (e) => {
+            let k = e.key.toLowerCase();
+            if (k === "w") keys.w = true; 
+            if (k === "a") keys.a = true;
+            if (k === "s") keys.s = true; 
+            if (k === "d") keys.d = true;
+            if (e.key === " ") { keys.space = true; e.preventDefault(); }
+            if (e.key === "ArrowUp") keys.ArrowUp = true;
+            if (e.key === "ArrowDown") keys.ArrowDown = true;
+            if (e.key === "ArrowLeft") keys.ArrowLeft = true;
+            if (e.key === "ArrowRight") keys.ArrowRight = true;
+
+            if (k === "m") { 
+                gameState = "MENU"; 
+                menuDiv.style.display = "flex"; 
+                resetPlayer(); 
+            }
+
+            if (gameState === "ACHIEVEMENTS" || gameState === "CAMPAIGN_WIN" || gameState === "ENDLESS_OVER") {
+                if (e.key === " ") {
+                    gameState = "MENU";
+                    menuDiv.style.display = "flex";
+                }
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            let k = e.key.toLowerCase();
+            if (k === "w") keys.w = false; 
+            if (k === "a") keys.a = false;
+            if (k === "s") keys.s = false; 
+            if (k === "d") keys.d = false;
+            if (e.key === " ") keys.space = false;
+            if (e.key === "ArrowUp") keys.ArrowUp = false;
+            if (e.key === "ArrowDown") keys.ArrowDown = false;
+            if (e.key === "ArrowLeft") keys.ArrowLeft = false;
+            if (e.key === "ArrowRight") keys.ArrowRight = false;
+        });
+
+        let player = { 
+            x: 50, y: 400, 
+            baseW: 26, baseH: 26,
+            w: 26, h: 26, 
+            renderW: 26, renderH: 26,
+            vx: 0, vy: 0, 
+            speed: 6.2, jumpPower: 11.2, 
+            gravity: 0.58, friction: 0.82, 
+            grounded: false,
+            standingOn: null,
+            coyoteTimer: 0,
+            jumpsLeft: 2,
+            isSquishingFlat: false,
+            flipAngle: 0,
+            isFlipping: false,
+            blinkTimer: 100,
+            isBlinking: false
+        };
+        
+        let camera = { x: 0, y: 0 };
+
+        let platforms = []; 
+        let movingPlatforms = [];
+        let lavas = []; 
+        let enemies = [];
+        let goal = { x: 0, y: 0, w: 40, h: 40 };
+        let particles = []; 
+        let energyBits = [];
+        
+        let stats = { deaths: 0, maxLevel: 0, highEndless: 0, bitsCollected: 0, flips: 0, flatSquishes: 0 };
+        const achievements = [
+            { id: "first", name: "System Boot", desc: "Beat Level 1", unlocked: false },
+            { id: "maze", name: "Maze Navigator", desc: "Escape the Winding Cyber Labyrinth", unlocked: false },
+            { id: "master", name: "Master Escapist", desc: "Conquer all levels!", unlocked: false },
+            { id: "flip", name: "Acrobatic Gel", desc: "Perform 20 double jump flips", unlocked: false },
+            { id: "pancake", name: "Pancake Bob", desc: "Squish flat 20 times", unlocked: false },
+            { id: "runner", name: "Cyber Sprinter", desc: "Reach 1000m in Endless Mode", unlocked: false },
+            { id: "clumsy", name: "Glitchy Drops", desc: "Die 5 times", unlocked: false },
+            { id: "hoarder", name: "Byte Collector", desc: "Collect 10 energy bits", unlocked: false }
+        ];
+        let toasts = [];
+
+        function unlockAchievement(id) {
+            let ach = achievements.find(a => a.id === id);
+            if (ach && !ach.unlocked) {
+                ach.unlocked = true;
+                toasts.push({ 
+                    text: "🏆 UNLOCKED: " + ach.name, 
+                    timer: 220, 
+                    maxTimer: 220,
+                    animY: -50,
+                    targetY: 0,
+                    alpha: 0
+                });
+            }
+        }
+
+        const levels = [
+            {
+                t: "1: Patrol Intrusion",
+                m: "Glitch Entities ahead! Time your double jumps over patrolling threats.",
+                p: [[0,450,300,50], [400,450,400,50]],
+                mp: [],
+                l: [[300,480,100,20]],
+                e: [{ x: 450, y: 424, w: 26, h: 26, vx: 2, vy: 0, minX: 420, maxX: 720, minY: 0, maxY: 0 }],
+                g: [720,400], s: [50,400]
+            },
+            {
+                t: "2: Mandatory Duct Crawl",
+                m: "Ceilings lowered to 18px clearance! You MUST press S/DOWN to squish under.",
+                p: [
+                    [0,450,1200,50],
+                    [250,0,400,432],
+                    [750,0,300,432]
+                ],
+                mp: [],
+                l: [],
+                e: [],
+                g: [1100,400], s: [50,400]
+            },
+            {
+                t: "3: Moving Cyber Ledges",
+                m: "Ride moving platforms across liquid plasma.",
+                p: [[0,450,150,50], [900,450,200,50]],
+                mp: [
+                    { x: 200, y: 450, w: 100, h: 20, vx: 2, vy: 0, minX: 200, maxX: 450, minY: 0, maxY: 0 },
+                    { x: 550, y: 450, w: 100, h: 20, vx: -2, vy: 0, minX: 550, maxX: 800, minY: 0, maxY: 0 }
+                ],
+                l: [[0,480,1100,20]],
+                e: [],
+                g: [1000,400], s: [50,400]
+            },
+            {
+                t: "4: Vertical Shaft Tower",
+                m: "Stepping platform added! Climb the tower to bypass glitch patrols.",
+                p: [
+                    [0,1150,300,50], [0,0,40,1200], [600,0,40,1200],
+                    [80,1050,100,20],
+                    [220,930,120,20], [380,750,120,20], [100,570,120,20], [250,370,120,20], [400,180,180,50]
+                ],
+                mp: [
+                    { x: 100, y: 830, w: 90, h: 20, vx: 1.8, vy: 0, minX: 100, maxX: 400, minY: 0, maxY: 0 },
+                    { x: 200, y: 470, w: 90, h: 20, vx: -2, vy: 0, minX: 100, maxX: 450, minY: 0, maxY: 0 }
+                ],
+                l: [[0,1180,640,20]],
+                e: [
+                    { x: 250, y: 724, w: 26, h: 26, vx: 2.5, vy: 0, minX: 200, maxX: 450, minY: 0, maxY: 0 },
+                    { x: 120, y: 344, w: 26, h: 26, vx: 2, vy: 0, minX: 100, maxX: 350, minY: 0, maxY: 0 }
+                ],
+                g: [480,130], s: [50,1100]
+            },
+            {
+                t: "5: The Cyber Winding Maze",
+                m: "Navigate the maze: Go RIGHT, drop down, squeeze LEFT, then climb to exit!",
+                p: [
+                    [0,0,1400,30], [0,0,30,900], [1370,0,30,900], [0,870,1400,30],
+                    [0,180,1100,30],
+                    [1100,180,30,450],
+                    [200,420,930,172],
+                    [200,610,1000,30],
+                    [100,750,150,20], [350,700,150,20], [600,750,150,20], [900,800,200,20]
+                ],
+                mp: [],
+                l: [[0,850,1400,20]],
+                e: [
+                    { x: 300, y: 154, w: 26, h: 26, vx: 3, vy: 0, minX: 200, maxX: 900, minY: 0, maxY: 0 },
+                    { x: 400, y: 584, w: 26, h: 26, vx: -2.5, vy: 0, minX: 250, maxX: 900, minY: 0, maxY: 0 }
+                ],
+                g: [1250,790], s: [50,120]
+            },
+            {
+                t: "6: Moving Security Grid",
+                m: "Avoid vertically patrolling glitches and synchronized moving bridges.",
+                p: [[0,450,150,50], [1050,450,200,50]],
+                mp: [
+                    { x: 200, y: 450, w: 80, h: 20, vx: 0, vy: 2, minX: 0, maxX: 0, minY: 250, maxY: 450 },
+                    { x: 450, y: 250, w: 80, h: 20, vx: 0, vy: -2, minX: 0, maxX: 0, minY: 250, maxY: 450 },
+                    { x: 700, y: 450, w: 80, h: 20, vx: 0, vy: 2, minX: 0, maxX: 0, minY: 250, maxY: 450 }
+                ],
+                l: [[0,480,1250,20]],
+                e: [
+                    { x: 350, y: 200, w: 26, h: 26, vx: 0, vy: 2.5, minX: 0, maxX: 0, minY: 150, maxY: 420 },
+                    { x: 600, y: 400, w: 26, h: 26, vx: 0, vy: -2.5, minX: 0, maxX: 0, minY: 150, maxY: 420 }
+                ],
+                g: [1120,400], s: [50,400]
+            },
+            {
+                t: "7: Double-Back Infiltration",
+                m: "Drop into the bottom duct, squish left, then ascend to goal.",
+                p: [
+                    [0,250,600,30], [800,0,30,500], [570,0,30,170], 
+                    [0,450,600,192],
+                    [0,660,1000,40]
+                ],
+                mp: [
+                    { x: 620, y: 250, w: 150, h: 20, vx: 0, vy: 1.5, minX: 0, maxX: 0, minY: 150, maxY: 400 }
+                ],
+                l: [[0,640,1000,20]],
+                e: [
+                    { x: 100, y: 634, w: 26, h: 26, vx: 3, vy: 0, minX: 50, maxX: 500, minY: 0, maxY: 0 }
+                ],
+                g: [700,80], s: [50,200]
+            },
+            {
+                t: "8: Master Core Escape",
+                m: "Combine all skills: dodging glitch entities, lifts, and tight squish vents!",
+                p: [
+                    [0,800,200,50], [0,0,30,850], [1200,0,30,850],
+                    [200,0,30,632], [200,650,800,100],
+                    [1000,400,200,30], [600,250,250,30]
+                ],
+                mp: [
+                    { x: 230, y: 780, w: 90, h: 20, vx: 2.5, vy: 0, minX: 230, maxX: 900, minY: 0, maxY: 0 },
+                    { x: 880, y: 380, w: 90, h: 20, vx: 0, vy: -2, minX: 0, maxX: 0, minY: 150, maxY: 380 }
+                ],
+                l: [[0,830,1230,20]],
+                e: [
+                    { x: 300, y: 624, w: 26, h: 26, vx: 3.5, vy: 0, minX: 230, maxX: 950, minY: 0, maxY: 0 },
+                    { x: 650, y: 224, w: 26, h: 26, vx: 2, vy: 0, minX: 610, maxX: 820, minY: 0, maxY: 0 }
+                ],
+                g: [650,190], s: [50,750]
+            }
+        ];
+
+        function startCampaignWithIntro() {
+            menuDiv.style.display = "none";
+            gameState = "INTRO";
+            introTimer = 0;
+            introTextIndex = 0;
+            currentLevel = 0;
+        }
+
+        function startGame(mode) {
+            menuDiv.style.display = "none";
+            gameState = mode;
+            if (mode === "CAMPAIGN") {
+                currentLevel = 0;
+                loadLevel();
+            } else if (mode === "ENDLESS") {
+                startEndless();
+            }
+        }
+
+        function showAchievements() {
+            menuDiv.style.display = "none";
+            gameState = "ACHIEVEMENTS";
+        }
+
+        function resetPlayer() {
+            player.vx = 0; 
+            player.vy = 0;
+            player.w = player.baseW;
+            player.h = player.baseH;
+            player.renderW = player.baseW;
+            player.renderH = player.baseH;
+            player.jumpsLeft = 2;
+            player.isSquishingFlat = false;
+            player.isFlipping = false;
+            player.flipAngle = 0;
+            player.coyoteTimer = 0;
+            player.standingOn = null;
+        }
+
+        function createDeathExplosion(x, y) {
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: x + player.w / 2,
+                    y: y + player.h / 2,
+                    vx: (Math.random() - 0.5) * 14,
+                    vy: (Math.random() - 0.5) * 14,
+                    size: Math.random() * 7 + 3,
+                    color: Math.random() > 0.5 ? "#00f0ff" : "#ff00ff",
+                    alpha: 1
+                });
+            }
+        }
+
+        function createJumpBurst(x, y) {
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: Math.random() * 4 + 2,
+                    size: Math.random() * 5 + 2,
+                    color: "#00f0ff",
+                    alpha: 0.8
+                });
+            }
+        }
+
+        function loadLevel() {
+            let lvl = levels[currentLevel];
+            platforms = lvl.p.map(arr => ({x: arr[0], y: arr[1], w: arr[2], h: arr[3]}));
+            
+            movingPlatforms = lvl.mp.map(o => ({
+                x: o.x, y: o.y, w: o.w, h: o.h, 
+                vx: o.vx, vy: o.vy, 
+                minX: o.minX, maxX: o.maxX, minY: o.minY, maxY: o.maxY 
+            }));
+
+            lavas = lvl.l.map(arr => ({x: arr[0], y: arr[1], w: arr[2], h: arr[3]}));
+            
+            enemies = lvl.e.map(o => ({
+                x: o.x, y: o.y, w: o.w, h: o.h,
+                vx: o.vx, vy: o.vy,
+                minX: o.minX, maxX: o.maxX, minY: o.minY, maxY: o.maxY
+            }));
+
+            goal = {x: lvl.g[0], y: lvl.g[1], w: 40, h: 40};
+            player.x = lvl.s[0]; 
+            player.y = lvl.s[1];
+            energyBits = [];
+            resetPlayer();
+
+            if (currentLevel === 0) unlockAchievement("first");
+            if (currentLevel === 4) unlockAchievement("maze");
+            stats.maxLevel = Math.max(stats.maxLevel, currentLevel + 1);
+        }
+
+        function die() {
+            createDeathExplosion(player.x, player.y);
+            stats.deaths++;
+            if (stats.deaths >= 5) unlockAchievement("clumsy");
+
+            if (gameState === "CAMPAIGN") {
+                loadLevel();
+            } else if (gameState === "ENDLESS") {
+                if (endlessDistance > stats.highEndless) stats.highEndless = endlessDistance;
+                gameState = "ENDLESS_OVER";
+            }
+        }
+
+        function startEndless() {
+            endlessDistance = 0; 
+            endlessSpeed = 3.5;
+            platforms = [{x: 0, y: 400, w: 800, h: 100}]; 
+            movingPlatforms = [];
+            lavas = [];
+            enemies = [];
+            energyBits = [];
+            player.x = 100; 
+            player.y = 300; 
+            resetPlayer();
+        }
+
+        function checkCollisionAt(x, y, w, h) {
+            let allP = platforms.concat(movingPlatforms);
+            for (let p of allP) {
+                if (x < p.x + p.w && x + w > p.x &&
+                    y < p.y + p.h && y + h > p.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function update() {
+            for (let i = toasts.length - 1; i >= 0; i--) {
+                let t = toasts[i];
+                t.timer--;
+
+                let targetY = i * 48;
+                if (t.timer > t.maxTimer - 25) {
+                    t.alpha += (1 - t.alpha) * 0.2;
+                    t.animY += (targetY - t.animY) * 0.2;
+                } else if (t.timer < 30) {
+                    t.alpha += (0 - t.alpha) * 0.2;
+                    t.animY -= 1.5;
+                } else {
+                    t.alpha = 1;
+                    t.animY += (targetY - t.animY) * 0.2;
+                }
+
+                if (t.timer <= 0) toasts.splice(i, 1);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= 0.03;
+                if (pt.alpha <= 0) particles.splice(i, 1);
+            }
+
+            if (gameState === "INTRO") {
+                introTimer++;
+                if (introTimer % 38 === 0 && introTextIndex < introMessages.length - 1) {
+                    introTextIndex++;
+                }
+                if (introTimer >= introMaxTimer) {
+                    gameState = "CAMPAIGN";
+                    loadLevel();
+                }
+                return;
+            }
+
+            if (gameState !== "CAMPAIGN" && gameState !== "ENDLESS") return;
+
+            for (let mp of movingPlatforms) {
+                mp.x += mp.vx;
+                mp.y += mp.vy;
+
+                if (mp.vx > 0 && mp.x >= mp.maxX) mp.vx *= -1;
+                if (mp.vx < 0 && mp.x <= mp.minX) mp.vx *= -1;
+                if (mp.vy > 0 && mp.y >= mp.maxY) mp.vy *= -1;
+                if (mp.vy < 0 && mp.y <= mp.minY) mp.vy *= -1;
+
+                if (player.grounded && player.standingOn === mp) {
+                    player.x += mp.vx;
+                    player.y += mp.vy;
+                }
+            }
+
+            for (let e of enemies) {
+                e.x += e.vx;
+                e.y += e.vy;
+
+                if (e.vx > 0 && e.x >= e.maxX) e.vx *= -1;
+                if (e.vx < 0 && e.x <= e.minX) e.vx *= -1;
+                if (e.vy > 0 && e.y >= e.maxY) e.vy *= -1;
+                if (e.vy < 0 && e.y <= e.minY) e.vy *= -1;
+
+                if (player.x < e.x + e.w && player.x + player.w > e.x &&
+                    player.y < e.y + e.h && player.y + player.h > e.y) {
+                    die();
+                    return;
+                }
+            }
+
+            if (keys.a || keys.ArrowLeft) player.vx -= 0.9;
+            if (keys.d || keys.ArrowRight) player.vx += 0.9;
+            player.vx *= player.friction;
+            
+            if (player.vx > player.speed) player.vx = player.speed;
+            if (player.vx < -player.speed) player.vx = -player.speed;
+
+            let wantSquish = keys.s || keys.ArrowDown;
+            if (wantSquish) {
+                if (!player.isSquishingFlat) {
+                    player.isSquishingFlat = true;
+                    player.h = 13;
+                    player.w = 36;
+                    player.y += 13; 
+                    stats.flatSquishes++;
+                    if (stats.flatSquishes >= 20) unlockAchievement("pancake");
+                }
+            } else if (player.isSquishingFlat) {
+                let testY = player.y - 13;
+                if (!checkCollisionAt(player.x, testY, player.baseW, player.baseH)) {
+                    player.isSquishingFlat = false;
+                    player.w = player.baseW;
+                    player.h = player.baseH;
+                    player.y = testY;
+                }
+            }
+
+            if (player.grounded) {
+                player.coyoteTimer = 8; 
+            } else {
+                player.coyoteTimer--;
+                player.standingOn = null;
+            }
+
+            let jumpRequested = (keys.space && !spaceWasPressed) || ((keys.w || keys.ArrowUp) && !upWasPressed);
+            spaceWasPressed = keys.space;
+            upWasPressed = keys.w || keys.ArrowUp;
+
+            if (jumpRequested) {
+                if (player.grounded || player.coyoteTimer > 0) {
+                    player.vy = -player.jumpPower;
+                    player.grounded = false;
+                    player.standingOn = null;
+                    player.coyoteTimer = 0; 
+                    player.jumpsLeft = 1;
+                } else if (player.jumpsLeft > 0) {
+                    player.vy = -player.jumpPower * 0.95;
+                    player.jumpsLeft = 0;
+                    player.isFlipping = true;
+                    player.flipAngle = 0;
+                    stats.flips++;
+                    if (stats.flips >= 20) unlockAchievement("flip");
+                    createJumpBurst(player.x + player.w/2, player.y + player.h/2);
+                }
+            }
+
+            player.vy += player.gravity;
+
+            let wiggle = 0;
+            if (Math.abs(player.vx) > 0.5 && !player.isSquishingFlat && player.grounded) {
+                wiggle = Math.sin(Date.now() / 60) * (Math.abs(player.vx) * 0.4); 
+            }
+
+            if (player.isSquishingFlat) {
+                player.renderW = 38 + Math.abs(player.vx) * 0.5;
+                player.renderH = 12;
+            } else {
+                player.renderW = player.w - (Math.abs(player.vy) * 0.3) + (Math.abs(player.vx) * 0.4) + wiggle;
+                player.renderH = player.h + (Math.abs(player.vy) * 0.5) - (Math.abs(player.vx) * 0.2) - wiggle;
+            }
+
+            player.blinkTimer--;
+            if (player.blinkTimer <= 0) {
+                player.isBlinking = true;
+                if (player.blinkTimer < -8) {
+                    player.isBlinking = false;
+                    player.blinkTimer = Math.random() * 150 + 60; 
+                }
+            }
+
+            player.x += player.vx;
+            checkCollisions("x");
+
+            player.y += player.vy;
+            player.grounded = false;
+            checkCollisions("y");
+
+            if (player.y > 1600 || player.x < -100) die();
+
+            let targetCamX = player.x - canvas.width / 2 + player.w / 2;
+            let targetCamY = player.y - canvas.height / 2 + player.h / 2;
+            camera.x += (targetCamX - camera.x) * 0.1;
+            camera.y += (targetCamY - camera.y) * 0.1;
+
+            if (gameState === "CAMPAIGN") {
+                if (player.x < goal.x + goal.w && player.x + player.w > goal.x &&
+                    player.y < goal.y + goal.h && player.y + player.h > goal.y) {
+                    currentLevel++;
+                    if (currentLevel >= levels.length) {
+                        unlockAchievement("master");
+                        gameState = "CAMPAIGN_WIN";
+                    } else {
+                        loadLevel();
+                    }
+                }
+            }
+
+            if (gameState === "ENDLESS") {
+                endlessDistance += endlessSpeed / 10;
+                endlessSpeed += 0.0008; 
+
+                if (endlessDistance > 1000) unlockAchievement("runner");
+
+                for (let i = 0; i < platforms.length; i++) platforms[i].x -= endlessSpeed;
+                for (let i = energyBits.length - 1; i >= 0; i--) {
+                    energyBits[i].x -= endlessSpeed;
+                    
+                    let eb = energyBits[i];
+                    if (player.x < eb.x + eb.w && player.x + player.w > eb.x &&
+                        player.y < eb.y + eb.h && player.y + player.h > eb.y) {
+                        stats.bitsCollected++;
+                        energyBits.splice(i, 1);
+                        if (stats.bitsCollected >= 10) unlockAchievement("hoarder");
+                    }
+                }
+                
+                if (player.x < 10) player.x = 10;
+                if (platforms[0] && platforms[0].x + platforms[0].w < 0) platforms.shift();
+
+                let lastP = platforms[platforms.length - 1];
+                if (lastP && lastP.x + lastP.w < 850) {
+                    let w = Math.random() * 150 + 100;
+                    let h = 20;
+                    let gapX = Math.random() * 100 + 70; 
+                    let gapY = (Math.random() - 0.5) * 140; 
+                    let nextY = lastP.y + gapY;
+                    if (nextY < 150) nextY = 150; 
+                    if (nextY > 440) nextY = 440;
+                    
+                    let newP = { x: lastP.x + lastP.w + gapX, y: nextY, w: w, h: h };
+                    platforms.push(newP);
+
+                    if (Math.random() > 0.4) {
+                        energyBits.push({
+                            x: newP.x + newP.w / 2 - 6,
+                            y: newP.y - 25,
+                            w: 12, h: 12
+                        });
+                    }
+                }
+            }
+        }
+
+        function checkCollisions(axis) {
+            let allP = platforms.concat(movingPlatforms);
+
+            for (let p of allP) {
+                if (player.x < p.x + p.w && player.x + player.w > p.x &&
+                    player.y < p.y + p.h && player.y + player.h > p.y) {
+                    
+                    if (axis === "x") {
+                        if (player.vx > 0) player.x = p.x - player.w;
+                        else if (player.vx < 0) player.x = p.x + p.w;
+                        player.vx = 0;
+                    } else if (axis === "y") {
+                        if (player.vy > 0) { 
+                            player.y = p.y - player.h; 
+                            player.grounded = true; 
+                            player.standingOn = p;
+                            player.jumpsLeft = 2;
+                            player.isFlipping = false;
+                        } else if (player.vy < 0) { 
+                            player.y = p.y + p.h; 
+                        }
+                        player.vy = 0;
+                    }
+                }
+            }
+            
+            for (let l of lavas) {
+                if (player.x < l.x + l.w && player.x + player.w > l.x &&
+                    player.y < l.y + l.h && player.y + player.h > l.y) {
+                    die(); 
+                    return;
+                }
+            }
+        }
+
+        function drawGlitchEnemy(e) {
+            ctx.save();
+            let jitterX = (Math.random() - 0.5) * 4;
+            let jitterY = (Math.random() - 0.5) * 4;
+            let ex = e.x + jitterX;
+            let ey = e.y + jitterY;
+
+            ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+            ctx.fillRect(ex - 4, ey + 2, e.w, e.h);
+            ctx.fillStyle = "rgba(255, 0, 85, 0.5)";
+            ctx.fillRect(ex + 4, ey - 2, e.w, e.h);
+
+            let bodyGrad = ctx.createLinearGradient(ex, ey, ex, ey + e.h);
+            bodyGrad.addColorStop(0, "#2a0018");
+            bodyGrad.addColorStop(1, "#0a010d");
+            ctx.fillStyle = bodyGrad;
+            ctx.fillRect(ex, ey, e.w, e.h);
+
+            ctx.strokeStyle = "#ff0055";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "#ff0055";
+            ctx.shadowBlur = 10;
+            ctx.strokeRect(ex, ey, e.w, e.h);
+
+            if (Math.random() > 0.25) {
+                ctx.fillStyle = Math.random() > 0.5 ? "#00f0ff" : "#ff0055";
+                let sliceY = ey + Math.random() * (e.h - 4);
+                let sliceH = Math.random() * 4 + 2;
+                let sliceOffset = (Math.random() - 0.5) * 12;
+                ctx.fillRect(ex + sliceOffset, sliceY, e.w, sliceH);
+            }
+
+            ctx.fillStyle = "rgba(255, 0, 85, 0.2)";
+            let scanY = (Date.now() / 15) % e.h;
+            ctx.fillRect(ex, ey + scanY, e.w, 3);
+
+            ctx.fillStyle = "#ff0055";
+            ctx.shadowColor = "#ff0055";
+            ctx.shadowBlur = 8;
+            
+            ctx.beginPath();
+            ctx.moveTo(ex + 4, ey + 7);
+            ctx.lineTo(ex + e.w - 4, ey + 7);
+            ctx.lineTo(ex + e.w - 7, ey + 13);
+            ctx.lineTo(ex + 7, ey + 13);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            let eyeOffset = Math.sin(Date.now() / 60) * 2;
+            ctx.fillRect(ex + 7 + eyeOffset, ey + 9, 3, 3);
+            ctx.fillRect(ex + e.w - 10 + eyeOffset, ey + 9, 3, 3);
+
+            ctx.fillStyle = "#00f0ff";
+            ctx.shadowColor = "#00f0ff";
+            ctx.shadowBlur = 6;
+            let floatOffset = Math.sin(Date.now() / 120) * 3;
+            ctx.fillRect(ex - 3, ey - 3 + floatOffset, 4, 4);
+            ctx.fillRect(ex + e.w - 1, ey - 3 - floatOffset, 4, 4);
+
+            ctx.restore();
+        }
+
+        function drawMovingPlatform(mp) {
+            ctx.save();
+
+            let platGrad = ctx.createLinearGradient(mp.x, mp.y, mp.x, mp.y + mp.h);
+            platGrad.addColorStop(0, "#ffe600");
+            platGrad.addColorStop(0.3, "#ffaa00");
+            platGrad.addColorStop(1, "#773a00");
+
+            ctx.fillStyle = platGrad;
+            ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
+
+            ctx.strokeStyle = "#ffe600";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "#ffaa00";
+            ctx.shadowBlur = 12;
+            ctx.strokeRect(mp.x, mp.y, mp.w, mp.h);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 6;
+            ctx.fillRect(mp.x, mp.y, 4, mp.h);
+            ctx.fillRect(mp.x + mp.w - 4, mp.y, 4, mp.h);
+
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+            ctx.lineWidth = 2;
+            
+            let arrowOffset = (Date.now() / 30) % 16;
+            let isMovingLeft = mp.vx < 0 || mp.vy < 0;
+
+            for (let cx = mp.x + 8; cx < mp.x + mp.w - 8; cx += 16) {
+                let drawX = isMovingLeft ? cx - arrowOffset : cx + arrowOffset;
+                if (drawX >= mp.x + 6 && drawX <= mp.x + mp.w - 12) {
+                    ctx.beginPath();
+                    let dir = isMovingLeft ? -1 : 1;
+                    ctx.moveTo(drawX, mp.y + 4);
+                    ctx.lineTo(drawX + (4 * dir), mp.y + mp.h / 2);
+                    ctx.lineTo(drawX, mp.y + mp.h - 4);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 4;
+            ctx.fillRect(mp.x + 4, mp.y, mp.w - 8, 2);
+
+            ctx.restore();
+        }
+
+        function drawSquishyBob() {
+            ctx.save();
+            let centerX = player.x + player.w / 2;
+            let centerY = player.y + player.h / 2;
+            ctx.translate(centerX, centerY);
+
+            if (player.isFlipping) {
+                player.flipAngle += 0.32;
+                if (player.flipAngle >= Math.PI * 2) {
+                    player.flipAngle = 0;
+                    player.isFlipping = false;
+                }
+                ctx.rotate(player.flipAngle);
+            }
+
+            let rx = player.renderW / 2;
+            let ry = player.renderH / 2;
+
+            ctx.shadowColor = "#00f0ff";
+            ctx.shadowBlur = 22;
+
+            let bodyGrad = ctx.createLinearGradient(-rx, -ry, rx, ry);
+            bodyGrad.addColorStop(0, "#70ffff");
+            bodyGrad.addColorStop(0.5, "#00f0ff");
+            bodyGrad.addColorStop(1, "#0077ff");
+
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.roundRect(-rx, -ry, player.renderW, player.renderH, [Math.min(rx, ry) * 0.85]);
+            ctx.fill();
+
+            let corePulse = Math.sin(Date.now() / 150) * 1.5;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(0, ry * 0.2, Math.max(1, Math.min(rx, ry) * 0.22 + corePulse), 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.ellipse(-rx * 0.35, -ry * 0.4, rx * 0.35, ry * 0.2, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (!player.isFlipping) {
+                let lookX = (player.vx / player.speed) * 3;
+                let lookY = (player.vy / player.jumpPower) * 2;
+                let eyeOffset = rx * 0.38;
+                let eyeY = -ry * 0.15 + lookY;
+
+                ctx.strokeStyle = "#030814";
+                ctx.fillStyle = "#030814";
+                ctx.lineWidth = 2.5;
+
+                if (player.isSquishingFlat || player.isBlinking) {
+                    ctx.beginPath();
+                    ctx.moveTo(-eyeOffset + lookX - 4, eyeY);
+                    ctx.lineTo(-eyeOffset + lookX + 4, eyeY);
+                    ctx.moveTo(eyeOffset + lookX - 4, eyeY);
+                    ctx.lineTo(eyeOffset + lookX + 4, eyeY);
+                    ctx.stroke();
+                } else if (player.vy < -3) {
+                    ctx.beginPath();
+                    ctx.arc(-eyeOffset + lookX, eyeY - 2, 4.5, 0, Math.PI * 2);
+                    ctx.arc(eyeOffset + lookX, eyeY - 2, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#00f0ff";
+                    ctx.beginPath();
+                    ctx.arc(-eyeOffset + lookX + 1, eyeY - 3, 1.8, 0, Math.PI * 2);
+                    ctx.arc(eyeOffset + lookX + 1, eyeY - 3, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (player.vy > 4) {
+                    ctx.beginPath();
+                    ctx.arc(-eyeOffset + lookX, eyeY, 3.5, Math.PI, 0);
+                    ctx.arc(eyeOffset + lookX, eyeY, 3.5, Math.PI, 0);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(-eyeOffset + lookX, eyeY, 3.5, 0, Math.PI * 2);
+                    ctx.arc(eyeOffset + lookX, eyeY, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath();
+                    ctx.arc(-eyeOffset + lookX - 1, eyeY - 1, 1.2, 0, Math.PI * 2);
+                    ctx.arc(-eyeOffset + lookX - 1, eyeY - 1, 1.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === "INTRO") {
+                ctx.fillStyle = "#03030b";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let scanY = (introTimer * 8) % canvas.height;
+                ctx.strokeStyle = "rgba(0, 255, 255, 0.25)";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(0, scanY);
+                ctx.lineTo(canvas.width, scanY);
+                ctx.stroke();
+
+                ctx.strokeStyle = "rgba(255, 0, 255, 0.08)";
+                ctx.lineWidth = 1;
+                for (let x = 0; x < canvas.width; x += 30) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+                }
+
+                ctx.fillStyle = "#00f0ff";
+                ctx.font = "bold 18px 'Courier New', monospace";
+                ctx.textAlign = "left";
+                for (let i = 0; i <= introTextIndex; i++) {
+                    ctx.fillText(introMessages[i], 100, 150 + (i * 42));
+                }
+
+                let progress = Math.min(1, introTimer / introMaxTimer);
+                ctx.strokeStyle = "#ff00ff";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(100, 350, 600, 26);
+                
+                ctx.fillStyle = "#ff00ff";
+                ctx.shadowColor = "#ff00ff";
+                ctx.shadowBlur = 12;
+                ctx.fillRect(104, 354, 592 * progress, 18);
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 14px 'Courier New', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`SYSTEM BOOT SEQUENCE: ${Math.floor(progress * 100)}%`, 400, 410);
+                return;
+            }
+
+            if (gameState === "ACHIEVEMENTS") {
+                ctx.fillStyle = "#0ff"; 
+                ctx.textAlign = "center";
+                ctx.font = "bold 30px 'Courier New', monospace"; 
+                ctx.shadowColor = "#0ff"; ctx.shadowBlur = 10;
+                ctx.fillText("BOB'S TROPHY CABINET", 400, 55);
+                ctx.shadowBlur = 0;
+
+                ctx.font = "14px 'Courier New', monospace";
+                let startY = 100;
+                achievements.forEach((a, i) => {
+                    let col = i % 2 === 0 ? 260 : 540;
+                    let row = Math.floor(i / 2);
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = a.unlocked ? "#ff00ff" : "#444";
+                    let prefix = a.unlocked ? "▶ " : "🔒 ";
+                    ctx.fillText(prefix + a.name, col, startY + (row * 52));
+                    ctx.fillStyle = a.unlocked ? "#fff" : "#666";
+                    ctx.fillText(a.desc, col, startY + 18 + (row * 52));
+                });
+                
+                ctx.fillStyle = "#0ff";
+                ctx.fillText(`Deaths: ${stats.deaths} | Best Endless: ${Math.floor(stats.highEndless)}m | Energy Bytes: ${stats.bitsCollected}`, 400, 420);
+                ctx.fillStyle = "#ff00ff";
+                ctx.fillText("Press SPACE or [M] to Return to Menu", 400, 460);
+                return;
+            }
+
+            ctx.save();
+            if (gameState === "CAMPAIGN") {
+                ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
+            }
+
+            ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
+            ctx.lineWidth = 1;
+            for (let x = -500; x < 2500; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, -500); ctx.lineTo(x, 2000); ctx.stroke();
+            }
+            for (let y = -500; y < 2000; y += 40) {
+                ctx.beginPath(); ctx.moveTo(-500, y); ctx.lineTo(2500, y); ctx.stroke();
+            }
+
+            for (let p of platforms) {
+                ctx.fillStyle = "#111a2e"; 
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.strokeStyle = "#00e5ff"; 
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#00e5ff"; 
+                ctx.shadowBlur = 8;
+                ctx.strokeRect(p.x, p.y, p.w, p.h);
+                ctx.shadowBlur = 0;
+            }
+
+            for (let mp of movingPlatforms) {
+                drawMovingPlatform(mp);
+            }
+
+            let offset = Math.sin(Date.now() / 150) * 3;
+            for (let l of lavas) {
+                ctx.fillStyle = "#ff0055";
+                ctx.shadowColor = "#ff0055";
+                ctx.shadowBlur = 12;
+                ctx.fillRect(l.x, l.y + offset, l.w, l.h - offset);
+                ctx.shadowBlur = 0;
+            }
+
+            for (let e of enemies) {
+                drawGlitchEnemy(e);
+            }
+
+            for (let eb of energyBits) {
+                ctx.fillStyle = "#ffe600";
+                ctx.shadowColor = "#ffe600";
+                ctx.shadowBlur = 10;
+                ctx.fillRect(eb.x, eb.y, eb.w, eb.h);
+                ctx.shadowBlur = 0;
+            }
+
+            if (gameState === "CAMPAIGN") {
+                ctx.fillStyle = "#ff00ff"; 
+                ctx.shadowColor = "#ff00ff"; 
+                ctx.shadowBlur = 15;
+                ctx.fillRect(goal.x, goal.y, goal.w, goal.h); 
+                ctx.shadowBlur = 0;
+            }
+
+            if (gameState === "CAMPAIGN" || gameState === "ENDLESS") {
+                drawSquishyBob();
+            }
+
+            for (let pt of particles) {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = Math.max(0, pt.alpha);
+                ctx.shadowColor = pt.color;
+                ctx.shadowBlur = 6;
+                ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.restore();
+
+            if (gameState === "CAMPAIGN") {
+                ctx.fillStyle = "rgba(0, 255, 255, 0.85)"; 
+                ctx.textAlign = "center";
+                ctx.font = "bold 24px 'Courier New', monospace"; 
+                ctx.fillText(levels[currentLevel].t, 400, 40);
+                ctx.font = "14px 'Courier New', monospace"; 
+                ctx.fillText(levels[currentLevel].m, 400, 68);
+            } else if (gameState === "ENDLESS") {
+                ctx.fillStyle = "rgba(255, 0, 255, 0.85)"; 
+                ctx.textAlign = "center";
+                ctx.font = "bold 32px 'Courier New', monospace"; 
+                ctx.fillText(Math.floor(endlessDistance) + "m", 400, 50);
+                ctx.font = "14px 'Courier New', monospace";
+                ctx.fillStyle = "#ffe600";
+                ctx.fillText("BYTES: " + stats.bitsCollected, 400, 78);
+            }
+
+            if (gameState === "CAMPAIGN_WIN" || gameState === "ENDLESS_OVER") {
+                ctx.fillStyle = "rgba(5, 5, 16, 0.88)"; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.textAlign = "center"; 
+                
+                if (gameState === "CAMPAIGN_WIN") {
+                    ctx.fillStyle = "#0ff";
+                    ctx.shadowColor = "#0ff"; ctx.shadowBlur = 15;
+                    ctx.font = "bold 36px 'Courier New', monospace";
+                    ctx.fillText("CYBER MAZE CONQUERED!", 400, 210);
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = "#fff"; 
+                    ctx.font = "18px 'Courier New', monospace";
+                    ctx.fillText("Bob navigated every maze and escaped system lockdown!", 400, 260);
+                } else {
+                    ctx.fillStyle = "#ff0055";
+                    ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 15;
+                    ctx.font = "bold 40px 'Courier New', monospace";
+                    ctx.fillText("SYSTEM CRASH!", 400, 190);
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = "#fff"; 
+                    ctx.font = "18px 'Courier New', monospace";
+                    ctx.fillText(`Distance Survived: ${Math.floor(endlessDistance)}m`, 400, 240);
+                    ctx.fillText(`Energy Bytes Collected: ${stats.bitsCollected}`, 400, 275);
+                }
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = "#ff00ff"; 
+                ctx.font = "18px 'Courier New', monospace";
+                ctx.fillText("Press SPACE to Return to Menu", 400, 340);
+            }
+
+            toasts.forEach((t) => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, Math.min(1, t.alpha));
+                
+                let toastX = 400 - 170;
+                let toastY = 20 + t.animY;
+
+                ctx.fillStyle = "rgba(10, 10, 22, 0.95)";
+                ctx.strokeStyle = "#ff00ff";
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#ff00ff";
+                ctx.shadowBlur = 10;
+                
+                ctx.fillRect(toastX, toastY, 340, 40);
+                ctx.strokeRect(toastX, toastY, 340, 40);
+                
+                ctx.fillStyle = "#ff00ff"; 
+                ctx.font = "bold 14px 'Courier New', monospace"; 
+                ctx.textAlign = "center";
+                ctx.shadowBlur = 0;
+                ctx.fillText(t.text, 400, toastY + 25);
+                ctx.restore();
+            });
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
