@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Squishy Bob's Neon Escape - Glitch & Intro Edition</title>
+    <title>Squishy Bob's Neon Escape - The Warden Protocol</title>
     <style>
         body {
             margin: 0; 
@@ -15,18 +15,23 @@
             flex-direction: column; 
             align-items: center;
             justify-content: center; 
-            height: 100vh; 
-            overflow: hidden; 
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
             user-select: none;
         }
 
         #game-container {
             position: relative;
-            width: 800px;
-            height: 500px;
+            width: min(800px, calc(100vw - 24px));
+            aspect-ratio: 8 / 5;
         }
 
         canvas { 
+            display: block;
+            width: 100%;
+            height: auto;
+            box-sizing: border-box;
             background-color: #080816; 
             border: 4px solid #0ff; 
             border-radius: 8px; 
@@ -51,7 +56,7 @@
         #main-menu h1 { 
             color: #fff; 
             text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
-            font-size: 44px; 
+            font-size: clamp(26px, 8vw, 44px);
             margin: 0; 
             letter-spacing: 2px;
         }
@@ -61,8 +66,10 @@
             text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff; 
             margin-top: 5px; 
             margin-bottom: 20px;
-            font-size: 16px;
+            font-size: clamp(10px, 2.5vw, 16px);
             letter-spacing: 1px;
+            text-align: center;
+            padding: 0 12px;
         }
 
         .menu-btn { 
@@ -77,7 +84,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); 
             cursor: pointer; 
             transition: all 0.2s ease-in-out;
-            width: 320px;
+            width: min(320px, calc(100% - 40px));
             text-transform: uppercase;
             border-radius: 4px;
         }
@@ -106,6 +113,11 @@
             border: 1px solid #ff00ff; 
             box-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
         }
+
+        .controls {
+            max-width: calc(100vw - 24px);
+            line-height: 2;
+        }
     </style>
 </head>
 <body>
@@ -115,8 +127,8 @@
         
         <div id="main-menu">
             <h1>SQUISHY BOB</h1>
-            <h2>Cyber Maze & Glitch Security</h2>
-            <button class="menu-btn" onclick="startCampaignWithIntro()">Campaign (Maze & Patrols)</button>
+            <h2>THE WARDEN PROTOCOL: 30 SECTORS + FINAL BOSS</h2>
+            <button class="menu-btn" onclick="startCampaignWithIntro()">Begin Story Campaign</button>
             <button class="menu-btn" onclick="startGame('ENDLESS')">Endless Cyber Run</button>
             <button class="menu-btn" onclick="showAchievements()">Trophies & Stats</button>
         </div>
@@ -137,13 +149,14 @@
         let endlessSpeed = 3.5;
         
         let introTimer = 0;
-        const introMaxTimer = 160;
+        const introMaxTimer = 220;
         let introTextIndex = 0;
         const introMessages = [
-            "> INITIATING BOBSHELL v2.5...",
-            "> LOADING NEON MAZE PROTOCOLS...",
-            "> CORRUPTED DATA DETECTED (GLITCH ENEMIES)...",
-            "> SQUISH ENGINE ENGAGED!"
+            "> BOBSHELL MAINTENANCE GEL: ONLINE.",
+            "> THE GLITCH WARDEN HAS LOCKED THE NEON GRID.",
+            "> 29 SECTORS CORRUPTED. CREW SIGNALS: TRAPPED.",
+            "> REBOOT THE CORE. FREE THE CREW. STOP THE WARDEN.",
+            "> SQUISH ENGINE ENGAGED. LET'S GET EVERYONE HOME!"
         ];
 
         const keys = { w: false, a: false, s: false, d: false, space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
@@ -214,6 +227,9 @@
         let movingPlatforms = [];
         let lavas = []; 
         let enemies = [];
+        let boss = null;
+        let bossProjectiles = [];
+        let bossAttackTimer = 0;
         let goal = { x: 0, y: 0, w: 40, h: 40 };
         let particles = []; 
         let energyBits = [];
@@ -246,130 +262,85 @@
             }
         }
 
+        function buildSector(spec, index) {
+            const width = 1260;
+            const floorY = 450;
+            const pits = spec.pits || [];
+            const floor = [];
+            let cursor = 0;
+            for (const [x, w] of pits) {
+                if (x > cursor) floor.push([cursor, floorY, x - cursor, 50]);
+                cursor = x + w;
+            }
+            if (cursor < width) floor.push([cursor, floorY, width - cursor, 50]);
+
+            const platforms = floor.slice();
+            for (const [x, y, w] of (spec.ledges || [])) platforms.push([x, y, w, 16]);
+            for (const [x, w] of (spec.ducts || [])) platforms.push([x, 414, w, 20]);
+
+            const lava = pits.map(([x, w]) => [x, 480, w, 20]);
+            const enemies = (spec.patrols || []).map(([x, minX, maxX, speed]) => ({
+                x, y: floorY - 26, w: 26, h: 26, vx: speed, vy: 0,
+                minX, maxX, minY: 0, maxY: 0
+            }));
+            const moving = (spec.lifts || []).map(([x, y, w, minX, maxX, speed]) => ({
+                x, y, w, h: 18, vx: speed, vy: 0, minX, maxX, minY: 0, maxY: 0
+            }));
+            return {
+                t: `${index + 1}: ${spec.name}`,
+                m: spec.desc,
+                p: platforms,
+                mp: moving,
+                l: lava,
+                e: enemies,
+                g: [1190, 400],
+                s: [50, 400]
+            };
+        }
+
+        const sectorSpecs = [
+            ["Boot Sequence", "A clear runway. Learn the rhythm of a jump and a double-jump.", [], [], [], [], []],
+            ["First Firewall", "Short plasma gaps introduce safe, readable jump timing.", [[340, 72]], [], [], [], []],
+            ["Patrol Sweep", "Watch the patrol's route, then hop past it.", [], [], [], [[560, 440, 790, 1.7]], []],
+            ["Split Circuit", "Two narrow gaps. Keep your momentum and land cleanly.", [[330, 80], [770, 88]], [], [], [], []],
+            ["Low-Ceiling Link", "Hold DOWN / S to squish through the low neon duct.", [], [[350, 250]], [], [], []],
+            ["Crossfire Hall", "A patrol guards the exit beyond a broad plasma seam.", [[610, 108]], [], [], [[840, 730, 1040, 2]], []],
+            ["Stepping Stones", "Raised ledges give you a safer route across the floor.", [[430, 86]], [], [[330, 338, 130], [590, 365, 130]], [], []],
+            ["Duct and Drop", "Crawl under the beam, then jump the gap just beyond it.", [[650, 78]], [[340, 245]], [], [], []],
+            ["Lift-Off", "Ride the moving bridge over plasma and jump for the far bank.", [[475, 170]], [], [], [], [[390, 365, 110, 345, 550, 1.5]]],
+            ["Hot Zigzag", "Three compact gaps make this a test of steady landings.", [[290, 70], [610, 78], [940, 86]], [], [], [], []],
+            ["Security Tunnel", "Squish beneath the security beam while a patrol closes in.", [], [[390, 300]], [], [[760, 670, 950, 2.1]], []],
+            ["Double Lift", "Chain two moving bridges. Wait for each one to come back.", [[360, 170], [800, 160]], [], [], [], [[300, 350, 105, 260, 455, 1.7], [730, 355, 105, 680, 875, -1.8]]],
+            ["Glitch Garden", "Ledges, plasma and a roaming glitch share the same lane.", [[680, 100]], [], [[420, 360, 125], [790, 340, 145]], [[930, 850, 1080, -2.2]], []],
+            ["Vertical Exchange", "Climb the stepping ledges, then drop back to the exit lane.", [[500, 90]], [], [[310, 362, 125], [535, 325, 125], [770, 360, 125]], [], []],
+            ["Pressure Valve", "Cross a narrow gap, then duck through a second low duct.", [[360, 96]], [[760, 220]], [], [[1010, 910, 1130, 2.3]], []],
+            ["Moving Crossroads", "A broad lift and two patrols demand patient timing.", [[460, 165]], [], [], [[260, 190, 335, 2.2], [1000, 920, 1120, -2.4]], [[385, 370, 120, 340, 565, 1.9]]],
+            ["Three-Beat Circuit", "Three gaps arrive in a steady rhythm. Keep your double jump ready.", [[260, 76], [610, 86], [950, 94]], [], [], [[760, 670, 850, 2.4]], []],
+            ["Laserless Labyrinth", "A low route and raised bypass meet at a guarded landing.", [[720, 100]], [[310, 250]], [[590, 345, 140], [850, 320, 150]], [[1010, 940, 1150, -2.5]], []],
+            ["Shifting Foundry", "Two lifts cross the foundry while glitches patrol the banks.", [[400, 150], [870, 155]], [], [], [[610, 520, 700, -2.4]], [[330, 365, 115, 285, 485, 2], [800, 360, 115, 755, 955, -2]]],
+            ["Coreward Climb", "Use the high route over a hot gap; the far landing is guarded.", [[490, 105]], [], [[300, 365, 130], [530, 320, 130], [760, 350, 150]], [[1010, 900, 1140, 2.6]], []],
+            ["Narrowband", "A long duct crawl feeds directly into a moving bridge.", [[760, 150]], [[270, 270]], [], [], [[680, 360, 110, 635, 840, 2.1]]],
+            ["Patrol Gauntlet", "Three patrols overlap. Use the ledges to choose your moment.", [[520, 95]], [], [[365, 360, 120], [690, 335, 130]], [[300, 210, 390, 2.5], [780, 690, 870, -2.7], [1080, 1000, 1170, 2.4]], []],
+            ["Twin Foundry Lifts", "Bridge the wide plasma cuts with two moving lifts.", [[330, 145], [850, 155]], [], [], [[590, 500, 680, 2.6]], [[270, 365, 115, 235, 425, 2.2], [790, 365, 115, 740, 930, -2.3]]],
+            ["Warden's Outer Ring", "The last approach mixes a duct, two gaps and a fast patrol.", [[420, 88], [870, 110]], [[650, 215]], [[485, 350, 130]], [[1050, 950, 1180, 2.8]], []],
+            ["Signal Scrambler", "Take the upper ledges past two glitches and a moving bridge.", [[600, 155]], [], [[320, 360, 135], [570, 325, 140], [840, 350, 145]], [[460, 400, 610, 2.6], [1010, 940, 1160, -2.8]], [[550, 365, 115, 510, 705, 2.4]]],
+            ["Redline Relay", "Fast patrols guard a staircase of safe landings.", [[320, 80], [730, 95]], [], [[450, 350, 120], [820, 320, 130]], [[570, 500, 700, -2.8], [1040, 960, 1170, 3]], []],
+            ["Final Approach", "A long plasma break, two lifts and a tight security duct.", [[430, 175], [950, 105]], [[690, 220]], [], [[250, 180, 330, 2.8], [1090, 1000, 1190, -3]], [[365, 365, 115, 320, 510, 2.5], [900, 365, 100, 845, 1015, -2.4]]],
+            ["Core Lockdown", "The Warden's guards cover every landing. Stay sharp.", [[300, 82], [620, 92], [940, 100]], [], [[430, 350, 120], [760, 330, 140]], [[535, 470, 690, 3], [1080, 995, 1195, -3.1]], []],
+            ["Warden's Gate", "One last gauntlet before the core. Save your jumps for the lifts.", [[360, 145], [800, 150]], [[610, 245]], [[480, 350, 125], [870, 325, 135]], [[250, 180, 325, 3], [1050, 960, 1180, -3.2]], [[305, 365, 110, 265, 455, 2.6], [750, 365, 110, 710, 895, -2.7]]]
+        ].map((entry, index) => buildSector({
+            name: entry[0], desc: entry[1], pits: entry[2], ducts: entry[3],
+            ledges: entry[4], patrols: entry[5], lifts: entry[6]
+        }, index));
+
         const levels = [
+            ...sectorSpecs,
             {
-                t: "1: Patrol Intrusion",
-                m: "Glitch Entities ahead! Time your double jumps over patrolling threats.",
-                p: [[0,450,300,50], [400,450,400,50]],
-                mp: [],
-                l: [[300,480,100,20]],
-                e: [{ x: 450, y: 424, w: 26, h: 26, vx: 2, vy: 0, minX: 420, maxX: 720, minY: 0, maxY: 0 }],
-                g: [720,400], s: [50,400]
-            },
-            {
-                t: "2: Mandatory Duct Crawl",
-                m: "Ceilings lowered to 18px clearance! You MUST press S/DOWN to squish under.",
-                p: [
-                    [0,450,1200,50],
-                    [250,0,400,432],
-                    [750,0,300,432]
-                ],
-                mp: [],
-                l: [],
-                e: [],
-                g: [1100,400], s: [50,400]
-            },
-            {
-                t: "3: Moving Cyber Ledges",
-                m: "Ride moving platforms across liquid plasma.",
-                p: [[0,450,150,50], [900,450,200,50]],
-                mp: [
-                    { x: 200, y: 450, w: 100, h: 20, vx: 2, vy: 0, minX: 200, maxX: 450, minY: 0, maxY: 0 },
-                    { x: 550, y: 450, w: 100, h: 20, vx: -2, vy: 0, minX: 550, maxX: 800, minY: 0, maxY: 0 }
-                ],
-                l: [[0,480,1100,20]],
-                e: [],
-                g: [1000,400], s: [50,400]
-            },
-            {
-                t: "4: Vertical Shaft Tower",
-                m: "Stepping platform added! Climb the tower to bypass glitch patrols.",
-                p: [
-                    [0,1150,300,50], [0,0,40,1200], [600,0,40,1200],
-                    [80,1050,100,20],
-                    [220,930,120,20], [380,750,120,20], [100,570,120,20], [250,370,120,20], [400,180,180,50]
-                ],
-                mp: [
-                    { x: 100, y: 830, w: 90, h: 20, vx: 1.8, vy: 0, minX: 100, maxX: 400, minY: 0, maxY: 0 },
-                    { x: 200, y: 470, w: 90, h: 20, vx: -2, vy: 0, minX: 100, maxX: 450, minY: 0, maxY: 0 }
-                ],
-                l: [[0,1180,640,20]],
-                e: [
-                    { x: 250, y: 724, w: 26, h: 26, vx: 2.5, vy: 0, minX: 200, maxX: 450, minY: 0, maxY: 0 },
-                    { x: 120, y: 344, w: 26, h: 26, vx: 2, vy: 0, minX: 100, maxX: 350, minY: 0, maxY: 0 }
-                ],
-                g: [480,130], s: [50,1100]
-            },
-            {
-                t: "5: The Cyber Winding Maze",
-                m: "Navigate the maze: Go RIGHT, drop down, squeeze LEFT, then climb to exit!",
-                p: [
-                    [0,0,1400,30], [0,0,30,900], [1370,0,30,900], [0,870,1400,30],
-                    [0,180,1100,30],
-                    [1100,180,30,450],
-                    [200,420,930,172],
-                    [200,610,1000,30],
-                    [100,750,150,20], [350,700,150,20], [600,750,150,20], [900,800,200,20]
-                ],
-                mp: [],
-                l: [[0,850,1400,20]],
-                e: [
-                    { x: 300, y: 154, w: 26, h: 26, vx: 3, vy: 0, minX: 200, maxX: 900, minY: 0, maxY: 0 },
-                    { x: 400, y: 584, w: 26, h: 26, vx: -2.5, vy: 0, minX: 250, maxX: 900, minY: 0, maxY: 0 }
-                ],
-                g: [1250,790], s: [50,120]
-            },
-            {
-                t: "6: Moving Security Grid",
-                m: "Avoid vertically patrolling glitches and synchronized moving bridges.",
-                p: [[0,450,150,50], [1050,450,200,50]],
-                mp: [
-                    { x: 200, y: 450, w: 80, h: 20, vx: 0, vy: 2, minX: 0, maxX: 0, minY: 250, maxY: 450 },
-                    { x: 450, y: 250, w: 80, h: 20, vx: 0, vy: -2, minX: 0, maxX: 0, minY: 250, maxY: 450 },
-                    { x: 700, y: 450, w: 80, h: 20, vx: 0, vy: 2, minX: 0, maxX: 0, minY: 250, maxY: 450 }
-                ],
-                l: [[0,480,1250,20]],
-                e: [
-                    { x: 350, y: 200, w: 26, h: 26, vx: 0, vy: 2.5, minX: 0, maxX: 0, minY: 150, maxY: 420 },
-                    { x: 600, y: 400, w: 26, h: 26, vx: 0, vy: -2.5, minX: 0, maxX: 0, minY: 150, maxY: 420 }
-                ],
-                g: [1120,400], s: [50,400]
-            },
-            {
-                t: "7: Double-Back Infiltration",
-                m: "Drop into the bottom duct, squish left, then ascend to goal.",
-                p: [
-                    [0,250,600,30], [800,0,30,500], [570,0,30,170], 
-                    [0,450,600,192],
-                    [0,660,1000,40]
-                ],
-                mp: [
-                    { x: 620, y: 250, w: 150, h: 20, vx: 0, vy: 1.5, minX: 0, maxX: 0, minY: 150, maxY: 400 }
-                ],
-                l: [[0,640,1000,20]],
-                e: [
-                    { x: 100, y: 634, w: 26, h: 26, vx: 3, vy: 0, minX: 50, maxX: 500, minY: 0, maxY: 0 }
-                ],
-                g: [700,80], s: [50,200]
-            },
-            {
-                t: "8: Master Core Escape",
-                m: "Combine all skills: dodging glitch entities, lifts, and tight squish vents!",
-                p: [
-                    [0,800,200,50], [0,0,30,850], [1200,0,30,850],
-                    [200,0,30,632], [200,650,800,100],
-                    [1000,400,200,30], [600,250,250,30]
-                ],
-                mp: [
-                    { x: 230, y: 780, w: 90, h: 20, vx: 2.5, vy: 0, minX: 230, maxX: 900, minY: 0, maxY: 0 },
-                    { x: 880, y: 380, w: 90, h: 20, vx: 0, vy: -2, minX: 0, maxX: 0, minY: 150, maxY: 380 }
-                ],
-                l: [[0,830,1230,20]],
-                e: [
-                    { x: 300, y: 624, w: 26, h: 26, vx: 3.5, vy: 0, minX: 230, maxX: 950, minY: 0, maxY: 0 },
-                    { x: 650, y: 224, w: 26, h: 26, vx: 2, vy: 0, minX: 610, maxX: 820, minY: 0, maxY: 0 }
-                ],
-                g: [650,190], s: [50,750]
+                t: "30: The Glitch Warden",
+                m: "Stomp the Warden from above. Dodge its neon bolts and survive seven hits!",
+                p: [[0, 450, 1000, 50], [0, 0, 24, 500], [976, 0, 24, 500]],
+                mp: [], l: [], e: [], g: [920, 400], s: [70, 400],
+                boss: { x: 590, y: 365, w: 92, h: 85, vx: 2.1, minX: 350, maxX: 760, hp: 7, maxHp: 7 }
             }
         ];
 
@@ -459,6 +430,9 @@
             }));
 
             goal = {x: lvl.g[0], y: lvl.g[1], w: 40, h: 40};
+            boss = lvl.boss ? { ...lvl.boss } : null;
+            bossProjectiles = [];
+            bossAttackTimer = 75;
             player.x = lvl.s[0]; 
             player.y = lvl.s[1];
             energyBits = [];
@@ -579,6 +553,32 @@
                 }
             }
 
+            if (boss) {
+                boss.x += boss.vx;
+                if (boss.x <= boss.minX || boss.x + boss.w >= boss.maxX) boss.vx *= -1;
+                bossAttackTimer--;
+                if (bossAttackTimer <= 0) {
+                    const dx = player.x + player.w / 2 - (boss.x + boss.w / 2);
+                    const dy = player.y + player.h / 2 - (boss.y + boss.h / 2);
+                    const distance = Math.hypot(dx, dy) || 1;
+                    const speed = 4.2 + (boss.maxHp - boss.hp) * 0.35;
+                    bossProjectiles.push({
+                        x: boss.x + boss.w / 2 - 7, y: boss.y + boss.h / 2 - 7,
+                        w: 14, h: 14, vx: dx / distance * speed, vy: dy / distance * speed
+                    });
+                    bossAttackTimer = Math.max(48, 92 - (boss.maxHp - boss.hp) * 6);
+                }
+                for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+                    const shot = bossProjectiles[i];
+                    shot.x += shot.vx;
+                    shot.y += shot.vy;
+                    if (shot.x < camera.x - 80 || shot.x > camera.x + canvas.width + 80 ||
+                        shot.y < camera.y - 80 || shot.y > camera.y + canvas.height + 80) {
+                        bossProjectiles.splice(i, 1);
+                    }
+                }
+            }
+
             if (keys.a || keys.ArrowLeft) player.vx -= 0.9;
             if (keys.d || keys.ArrowRight) player.vx += 0.9;
             player.vx *= player.friction;
@@ -662,9 +662,41 @@
             player.x += player.vx;
             checkCollisions("x");
 
+            const previousBottom = player.y + player.h;
             player.y += player.vy;
             player.grounded = false;
             checkCollisions("y");
+
+            if (boss) {
+                const overlapsBoss = player.x < boss.x + boss.w && player.x + player.w > boss.x &&
+                    player.y < boss.y + boss.h && player.y + player.h > boss.y;
+                if (overlapsBoss) {
+                    if (player.vy >= 0 && previousBottom <= boss.y + 20) {
+                        boss.hp--;
+                        player.y = boss.y - player.h;
+                        player.vy = -player.jumpPower * 0.78;
+                        player.grounded = false;
+                        createJumpBurst(player.x + player.w / 2, player.y + player.h);
+                        if (boss.hp <= 0) {
+                            boss = null;
+                            bossProjectiles = [];
+                            unlockAchievement("master");
+                            gameState = "CAMPAIGN_WIN";
+                        }
+                    } else {
+                        die();
+                        return;
+                    }
+                }
+                for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+                    const shot = bossProjectiles[i];
+                    if (player.x < shot.x + shot.w && player.x + player.w > shot.x &&
+                        player.y < shot.y + shot.h && player.y + player.h > shot.y) {
+                        die();
+                        return;
+                    }
+                }
+            }
 
             if (player.y > 1600 || player.x < -100) die();
 
@@ -673,7 +705,7 @@
             camera.x += (targetCamX - camera.x) * 0.1;
             camera.y += (targetCamY - camera.y) * 0.1;
 
-            if (gameState === "CAMPAIGN") {
+            if (gameState === "CAMPAIGN" && !boss) {
                 if (player.x < goal.x + goal.w && player.x + player.w > goal.x &&
                     player.y < goal.y + goal.h && player.y + player.h > goal.y) {
                     currentLevel++;
@@ -827,6 +859,36 @@
             ctx.fillRect(ex - 3, ey - 3 + floatOffset, 4, 4);
             ctx.fillRect(ex + e.w - 1, ey - 3 - floatOffset, 4, 4);
 
+            ctx.restore();
+        }
+
+        function drawWarden() {
+            if (!boss) return;
+            ctx.save();
+            const pulse = Math.sin(Date.now() / 110) * 5;
+            const x = boss.x;
+            const y = boss.y + pulse;
+            ctx.shadowColor = "#ff0055";
+            ctx.shadowBlur = 24;
+            const gradient = ctx.createLinearGradient(x, y, x, y + boss.h);
+            gradient.addColorStop(0, "#ff3b87");
+            gradient.addColorStop(0.55, "#8f0048");
+            gradient.addColorStop(1, "#210027");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, boss.w, boss.h);
+            ctx.strokeStyle = "#ff0055";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x, y, boss.w, boss.h);
+            ctx.shadowColor = "#00f0ff";
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = "#00f0ff";
+            ctx.fillRect(x + 17, y + 27, 18, 9);
+            ctx.fillRect(x + boss.w - 35, y + 27, 18, 9);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(x + 23, y + 29, 5, 5);
+            ctx.fillRect(x + boss.w - 29, y + 29, 5, 5);
+            ctx.fillStyle = "#ff00ff";
+            ctx.fillRect(x + 37, y + 57, 18, 8);
             ctx.restore();
         }
 
@@ -1090,6 +1152,17 @@
                 drawGlitchEnemy(e);
             }
 
+            drawWarden();
+            for (const shot of bossProjectiles) {
+                ctx.fillStyle = "#ff0055";
+                ctx.shadowColor = "#ff0055";
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(shot.x + shot.w / 2, shot.y + shot.h / 2, shot.w / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
             for (let eb of energyBits) {
                 ctx.fillStyle = "#ffe600";
                 ctx.shadowColor = "#ffe600";
@@ -1098,7 +1171,7 @@
                 ctx.shadowBlur = 0;
             }
 
-            if (gameState === "CAMPAIGN") {
+            if (gameState === "CAMPAIGN" && !boss) {
                 ctx.fillStyle = "#ff00ff"; 
                 ctx.shadowColor = "#ff00ff"; 
                 ctx.shadowBlur = 15;
@@ -1125,10 +1198,29 @@
             if (gameState === "CAMPAIGN") {
                 ctx.fillStyle = "rgba(0, 255, 255, 0.85)"; 
                 ctx.textAlign = "center";
-                ctx.font = "bold 24px 'Courier New', monospace"; 
+                ctx.font = "bold 21px 'Courier New', monospace";
                 ctx.fillText(levels[currentLevel].t, 400, 40);
-                ctx.font = "14px 'Courier New', monospace"; 
+                ctx.font = "13px 'Courier New', monospace";
                 ctx.fillText(levels[currentLevel].m, 400, 68);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffe600";
+                ctx.font = "bold 13px 'Courier New', monospace";
+                ctx.fillText(`SECTOR ${String(currentLevel + 1).padStart(2, "0")} / 30`, 780, 96);
+                if (boss) {
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "rgba(10, 0, 20, 0.9)";
+                    ctx.fillRect(230, 107, 340, 20);
+                    ctx.fillStyle = "#ff0055";
+                    ctx.shadowColor = "#ff0055";
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(234, 111, 332 * (boss.hp / boss.maxHp), 12);
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = "#ff8cce";
+                    ctx.strokeRect(230, 107, 340, 20);
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "bold 12px 'Courier New', monospace";
+                    ctx.fillText(`WARDEN CORE: ${boss.hp} / ${boss.maxHp}`, 400, 143);
+                }
             } else if (gameState === "ENDLESS") {
                 ctx.fillStyle = "rgba(255, 0, 255, 0.85)"; 
                 ctx.textAlign = "center";
@@ -1148,11 +1240,11 @@
                     ctx.fillStyle = "#0ff";
                     ctx.shadowColor = "#0ff"; ctx.shadowBlur = 15;
                     ctx.font = "bold 36px 'Courier New', monospace";
-                    ctx.fillText("CYBER MAZE CONQUERED!", 400, 210);
+                    ctx.fillText("THE NEON GRID IS FREE!", 400, 210);
                     ctx.shadowBlur = 0;
                     ctx.fillStyle = "#fff"; 
                     ctx.font = "18px 'Courier New', monospace";
-                    ctx.fillText("Bob navigated every maze and escaped system lockdown!", 400, 260);
+                    ctx.fillText("Bob rebooted all 30 sectors and freed the trapped crew!", 400, 260);
                 } else {
                     ctx.fillStyle = "#ff0055";
                     ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 15;
