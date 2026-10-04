@@ -165,6 +165,10 @@
 
         window.addEventListener("keydown", (e) => {
             let k = e.key.toLowerCase();
+            if ((gameState === "CAMPAIGN" || gameState === "ENDLESS") &&
+                ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
             if (k === "w") keys.w = true; 
             if (k === "a") keys.a = true;
             if (k === "s") keys.s = true; 
@@ -237,7 +241,7 @@
         let stats = { deaths: 0, maxLevel: 0, highEndless: 0, bitsCollected: 0, flips: 0, flatSquishes: 0 };
         const achievements = [
             { id: "first", name: "System Boot", desc: "Beat Level 1", unlocked: false },
-            { id: "maze", name: "Maze Navigator", desc: "Escape the Winding Cyber Labyrinth", unlocked: false },
+            { id: "maze", name: "Maze Navigator", desc: "Complete sector 18: Laserless Labyrinth", unlocked: false },
             { id: "master", name: "Master Escapist", desc: "Conquer all levels!", unlocked: false },
             { id: "flip", name: "Acrobatic Gel", desc: "Perform 20 double jump flips", unlocked: false },
             { id: "pancake", name: "Pancake Bob", desc: "Squish flat 20 times", unlocked: false },
@@ -289,6 +293,7 @@
             return {
                 t: `${index + 1}: ${spec.name}`,
                 m: spec.desc,
+                completionAchievement: spec.completionAchievement,
                 p: platforms,
                 mp: moving,
                 l: lava,
@@ -299,7 +304,7 @@
         }
 
         const sectorSpecs = [
-            ["Boot Sequence", "A clear runway. Learn the rhythm of a jump and a double-jump.", [], [], [], [], []],
+            ["Boot Sequence", "A clear runway. Learn the rhythm of a jump and a double-jump.", [], [], [], [], [], "first"],
             ["First Firewall", "Short plasma gaps introduce safe, readable jump timing.", [[340, 72]], [], [], [], []],
             ["Patrol Sweep", "Watch the patrol's route, then hop past it.", [], [], [], [[560, 440, 790, 1.7]], []],
             ["Split Circuit", "Two narrow gaps. Keep your momentum and land cleanly.", [[330, 80], [770, 88]], [], [], [], []],
@@ -316,7 +321,7 @@
             ["Pressure Valve", "Cross a narrow gap, then duck through a second low duct.", [[360, 96]], [[760, 220]], [], [[1010, 910, 1130, 2.3]], []],
             ["Moving Crossroads", "A broad lift and two patrols demand patient timing.", [[460, 165]], [], [], [[260, 190, 335, 2.2], [1000, 920, 1120, -2.4]], [[385, 370, 120, 340, 565, 1.9]]],
             ["Three-Beat Circuit", "Three gaps arrive in a steady rhythm. Keep your double jump ready.", [[260, 76], [610, 86], [950, 94]], [], [], [[760, 670, 850, 2.4]], []],
-            ["Laserless Labyrinth", "A low route and raised bypass meet at a guarded landing.", [[720, 100]], [[310, 250]], [[590, 345, 140], [850, 320, 150]], [[1010, 940, 1150, -2.5]], []],
+            ["Laserless Labyrinth", "A low route and raised bypass meet at a guarded landing.", [[720, 100]], [[310, 250]], [[590, 345, 140], [850, 320, 150]], [[1010, 940, 1150, -2.5]], [], "maze"],
             ["Shifting Foundry", "Two lifts cross the foundry while glitches patrol the banks.", [[400, 150], [870, 155]], [], [], [[610, 520, 700, -2.4]], [[330, 365, 115, 285, 485, 2], [800, 360, 115, 755, 955, -2]]],
             ["Coreward Climb", "Use the high route over a hot gap; the far landing is guarded.", [[490, 105]], [], [[300, 365, 130], [530, 320, 130], [760, 350, 150]], [[1010, 900, 1140, 2.6]], []],
             ["Narrowband", "A long duct crawl feeds directly into a moving bridge.", [[760, 150]], [[270, 270]], [], [], [[680, 360, 110, 635, 840, 2.1]]],
@@ -330,7 +335,7 @@
             ["Warden's Gate", "One last gauntlet before the core. Save your jumps for the lifts.", [[360, 145], [800, 150]], [[610, 245]], [[480, 350, 125], [870, 325, 135]], [[250, 180, 325, 3], [1050, 960, 1180, -3.2]], [[305, 365, 110, 265, 455, 2.6], [750, 365, 110, 710, 895, -2.7]]]
         ].map((entry, index) => buildSector({
             name: entry[0], desc: entry[1], pits: entry[2], ducts: entry[3],
-            ledges: entry[4], patrols: entry[5], lifts: entry[6]
+            ledges: entry[4], patrols: entry[5], lifts: entry[6], completionAchievement: entry[7]
         }, index));
 
         const levels = [
@@ -438,8 +443,6 @@
             energyBits = [];
             resetPlayer();
 
-            if (currentLevel === 0) unlockAchievement("first");
-            if (currentLevel === 4) unlockAchievement("maze");
             stats.maxLevel = Math.max(stats.maxLevel, currentLevel + 1);
         }
 
@@ -464,6 +467,9 @@
             lavas = [];
             enemies = [];
             energyBits = [];
+            boss = null;
+            bossProjectiles = [];
+            bossAttackTimer = 0;
             player.x = 100; 
             player.y = 300; 
             resetPlayer();
@@ -708,6 +714,8 @@
             if (gameState === "CAMPAIGN" && !boss) {
                 if (player.x < goal.x + goal.w && player.x + player.w > goal.x &&
                     player.y < goal.y + goal.h && player.y + player.h > goal.y) {
+                    const achievement = levels[currentLevel].completionAchievement;
+                    if (achievement) unlockAchievement(achievement);
                     currentLevel++;
                     if (currentLevel >= levels.length) {
                         unlockAchievement("master");

@@ -2,6 +2,7 @@
   "name": "squishy-bob",
   "private": true,
   "scripts": {
-    "dev": "start \"\" \"squishy Bob v1.3.html\""
+    "dev": "start \"\" \"squishy Bob v1.3.html\"",
+    "test": "node --test"
   }
 }
