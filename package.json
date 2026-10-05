@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "start \"\" \"squishy Bob v1.3.html\"",
-    "test": "node --test"
+    "test": "node --test",
+    "verify": "node tools/verify-levels.js"
   }
 }
