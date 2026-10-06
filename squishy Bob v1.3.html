@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <title>Squishy Bob's Neon Escape - The Warden Protocol</title>
     <style>
+        :root {
+            --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px);
+            --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px);
+        }
         body {
             margin: 0; padding: 0;
             background: radial-gradient(ellipse at center, #120626 0%, #050510 70%);
@@ -12,7 +17,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100vh; overflow-x: hidden; overflow-y: auto; user-select: none;
         }
-        #game-container { position: relative; width: min(800px, calc(100vw - 24px)); aspect-ratio: 8 / 5; }
+        #game-container { position: relative; width: min(800px, calc(100vw - 24px), calc((100vh - 110px) * 1.6)); aspect-ratio: 8 / 5; }
         canvas {
             display: block; width: 100%; height: auto; box-sizing: border-box;
             background-color: #080816; border: 4px solid #0ff; border-radius: 8px;
@@ -21,9 +26,11 @@
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(8, 8, 20, 0.72);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 8px; z-index: 10;
+            display: flex; flex-direction: column;
+            border-radius: 8px; z-index: 10; overflow-y: auto; box-sizing: border-box;
         }
+        .menu-inner { margin: auto; padding: 8px 0; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .menu-grid { width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; }
         #main-menu h1 {
             color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
             font-size: clamp(26px, 8vw, 44px); margin: 0; letter-spacing: 2px;
@@ -38,7 +45,7 @@
             margin-top: 9px; padding: 9px 35px; font-size: 15px; font-family: inherit; font-weight: bold;
             background: rgba(0, 255, 255, 0.05); color: #0ff; border: 2px solid #0ff;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); cursor: pointer; transition: all 0.2s ease-in-out;
-            width: min(320px, calc(100% - 40px)); text-transform: uppercase; border-radius: 4px;
+            width: 100%; text-transform: uppercase; border-radius: 4px;
         }
         .menu-btn:hover { background: #0ff; color: #000; box-shadow: 0 0 20px #0ff; transform: scale(1.03); }
         .menu-btn.alt { color: #ff2bd6; border-color: #ff2bd6; box-shadow: 0 0 10px rgba(255, 43, 214, 0.5); background: rgba(255, 43, 214, 0.05); }
@@ -51,26 +58,157 @@
             background: #111; padding: 3px 6px; border-radius: 4px; color: #ff00ff; font-weight: bold;
             border: 1px solid #ff00ff; box-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
         }
+        @media (max-height: 520px) {
+            #main-menu h1 { font-size: 30px; }
+            #main-menu h2 { margin-bottom: 6px; font-size: 11px; }
+            .menu-grid { width: min(560px, calc(100% - 32px)); display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+            .menu-grid .menu-btn { margin-top: 0; padding: 8px 10px; font-size: 13px; }
+            .menu-grid.one { display: flex; width: min(320px, calc(100% - 40px)); margin-top: 10px; }
+            .panel { padding: 8px 18px 10px; }
+            .panel h3 { font-size: 18px; margin: 0; }
+            .setting { margin-top: 6px; }
+            .setting input[type=range] { height: 22px; margin-top: 0; }
+            .setting-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        }
+
+        /* ---------- touch layout: game letterboxed on black, controls in the bars ---------- */
+        html.touch, html.touch body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+        html.touch body {
+            position: fixed; inset: 0; min-height: 0; background: #000; box-sizing: border-box;
+            padding: var(--sat) var(--sar) var(--sab) var(--sal);
+            touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        html.touch .controls { display: none; }
+        html.touch #game-container {
+            width: min(calc(100vw - var(--sal) - var(--sar)), calc((100vh - var(--sat) - var(--sab)) * 1.6));
+            width: min(calc(100vw - var(--sal) - var(--sar)), calc((100dvh - var(--sat) - var(--sab)) * 1.6));
+        }
+        html.touch canvas { border: 0; border-radius: 0; box-shadow: 0 0 18px rgba(0, 255, 255, 0.25); }
+        html.touch #main-menu {
+            position: fixed; inset: 0; border-radius: 0; background: rgba(5, 5, 16, 0.82); touch-action: pan-y;
+            padding: var(--sat) var(--sar) var(--sab) var(--sal);
+        }
+        html.touch .menu-btn:hover { background: rgba(0, 255, 255, 0.05); color: #0ff; transform: none; }
+        html.touch .menu-btn.alt:hover { background: rgba(255, 43, 214, 0.05); color: #ff2bd6; }
+        html.touch .menu-btn:active { background: #0ff; color: #000; }
+
+        #touch-ui { display: none; position: fixed; inset: 0; z-index: 20; touch-action: none; -webkit-user-select: none; user-select: none; }
+        html.touch.playing:not(.kbd) #touch-ui { display: block; }
+        html.touch.settings-open #touch-ui { display: block; z-index: 55; pointer-events: none; }
+        #stick {
+            position: absolute; left: calc(26px + var(--sal)); bottom: calc(26px + var(--sab)); width: 124px; height: 124px;
+            border-radius: 50%; border: 2px solid rgba(0, 240, 255, 0.85); box-sizing: border-box; pointer-events: none;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.16), rgba(0, 240, 255, 0.04));
+            box-shadow: 0 0 14px rgba(0, 240, 255, 0.45), inset 0 0 14px rgba(0, 240, 255, 0.25);
+        }
+        #stick.active { bottom: auto; transform: translate(-50%, -50%); }
+        #stick-knob {
+            position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+            background: rgba(0, 240, 255, 0.45); border: 2px solid #b8fbff; box-sizing: border-box; box-shadow: 0 0 16px #0ff;
+        }
+        .tbtn {
+            position: absolute; border-radius: 50%; box-sizing: border-box; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+            font: bold 13px 'Courier New', monospace; color: #fff; letter-spacing: 1px;
+        }
+        .tbtn.on { transform: scale(0.9); filter: brightness(1.7); }
+        #btn-jump {
+            width: 86px; height: 86px; right: calc(22px + var(--sar)); bottom: calc(26px + var(--sab));
+            border: 3px solid #ff2bd6; background: rgba(255, 43, 214, 0.2); box-shadow: 0 0 16px rgba(255, 43, 214, 0.6); text-shadow: 0 0 6px #ff2bd6;
+        }
+        #btn-shoot {
+            display: none; width: 66px; height: 66px; right: calc(122px + var(--sar)); bottom: calc(70px + var(--sab));
+            border: 3px solid #ffd400; background: rgba(255, 212, 0, 0.16); box-shadow: 0 0 14px rgba(255, 212, 0, 0.55); text-shadow: 0 0 6px #ffd400;
+        }
+        html.boss #btn-shoot, html.settings-open #btn-shoot { display: flex; }
+        #btn-pause {
+            position: absolute; top: calc(10px + var(--sat)); right: calc(10px + var(--sar)); width: 44px; height: 44px;
+            border-radius: 10px; border: 2px solid #0ff; background: rgba(0, 0, 0, 0.4); color: #0ff; font-size: 16px;
+        }
+
+        .overlay {
+            position: fixed; inset: 0; z-index: 40; display: none; background: rgba(0, 0, 10, 0.72);
+            box-sizing: border-box; padding: var(--sat) var(--sar) var(--sab) var(--sal); overflow-y: auto; touch-action: pan-y;
+        }
+        html.touch.paused:not(.kbd):not(.settings-open) #pause-panel, html.settings-open #settings { display: flex; }
+        #settings { z-index: 50; }
+        .panel {
+            margin: auto; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 14px 18px 16px;
+            background: rgba(8, 8, 24, 0.95); border: 2px solid #0ff; border-radius: 10px; box-shadow: 0 0 24px rgba(0, 255, 255, 0.35);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .panel h3 { margin: 2px 0 4px; color: #0ff; text-shadow: 0 0 10px #0ff; letter-spacing: 3px; font-size: 22px; }
+        .setting { width: 100%; margin-top: 12px; color: #cfe; font-size: 14px; }
+        .setting .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .setting .val { color: #ff2bd6; }
+        .setting input[type=range] { width: 100%; height: 28px; margin: 4px 0 0; accent-color: #0ff; }
+        .setting input[type=checkbox] { width: 22px; height: 22px; margin: 0; accent-color: #ff2bd6; }
+        .setting small { color: #789; font-size: 11px; }
+        .setting-pair { width: 100%; }
     </style>
 </head>
 <body>
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="500"></canvas>
         <div id="main-menu">
-            <h1>SQUISHY BOB</h1>
-            <h2>THE WARDEN PROTOCOL: 13 SECTORS + 3-PHASE BOSS</h2>
-            <div id="menu-best"></div>
-            <button class="menu-btn" onclick="startCampaignWithIntro()">Story Campaign</button>
-            <button class="menu-btn alt" onclick="startSpeedrun()">Speedrun Mode</button>
-            <button class="menu-btn" onclick="openSectorSelect()">Sector Select</button>
-            <button class="menu-btn" onclick="startGame('ENDLESS')">Endless Cyber Run</button>
-            <button class="menu-btn" onclick="showAchievements()">Trophies &amp; Stats</button>
+            <div class="menu-inner">
+                <h1>SQUISHY BOB</h1>
+                <h2>THE WARDEN PROTOCOL: 13 SECTORS + 3-PHASE BOSS</h2>
+                <div id="menu-best"></div>
+                <div class="menu-grid">
+                    <button class="menu-btn" onclick="startCampaignWithIntro()">Story Campaign</button>
+                    <button class="menu-btn alt" onclick="startSpeedrun()">Speedrun Mode</button>
+                    <button class="menu-btn" onclick="openSectorSelect()">Sector Select</button>
+                    <button class="menu-btn" onclick="startGame('ENDLESS')">Endless Cyber Run</button>
+                    <button class="menu-btn" onclick="showAchievements()">Trophies &amp; Stats</button>
+                    <button class="menu-btn" onclick="openSettings()">Settings</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="controls">
         Move <kbd>A</kbd><kbd>D</kbd>/<kbd>←</kbd><kbd>→</kbd> | Jump / Double / Wall-Jump <kbd>Space</kbd>/<kbd>W</kbd>/<kbd>↑</kbd> | Squish / Drop <kbd>S</kbd>/<kbd>↓</kbd> | Shoot (boss) <kbd>X</kbd>/<kbd>J</kbd>/<kbd>K</kbd><br>
         Respawn <kbd>R</kbd> | Pause <kbd>P</kbd> | Timer <kbd>T</kbd> | Mute <kbd>N</kbd> | Menu <kbd>M</kbd>
+    </div>
+
+    <div id="touch-ui">
+        <div id="stick"><div id="stick-knob"></div></div>
+        <div id="btn-shoot" class="tbtn">FIRE</div>
+        <div id="btn-jump" class="tbtn">JUMP</div>
+        <div id="btn-pause" class="tbtn">❚❚</div>
+    </div>
+
+    <div id="pause-panel" class="overlay">
+        <div class="panel">
+            <h3>PAUSED</h3>
+            <div class="menu-grid">
+                <button class="menu-btn" onclick="pauseAction('resume')">Resume</button>
+                <button class="menu-btn" onclick="pauseAction('respawn')">Respawn</button>
+                <button class="menu-btn" onclick="openSettings()">Settings</button>
+                <button class="menu-btn alt" onclick="pauseAction('menu')">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings" class="overlay">
+        <div class="panel">
+            <h3>SETTINGS</h3>
+            <label class="setting">
+                <span class="row">Joystick opacity <span class="val" id="val-stick"></span></span>
+                <input type="range" id="set-stick" min="0" max="100" step="5">
+            </label>
+            <label class="setting">
+                <span class="row">Button opacity <span class="val" id="val-btn"></span></span>
+                <input type="range" id="set-btn" min="0" max="100" step="5">
+            </label>
+            <div class="setting-pair">
+                <label class="setting"><span class="row">Sound <input type="checkbox" id="set-sound"></span></label>
+                <label class="setting"><span class="row">Speedrun timer <input type="checkbox" id="set-timer"></span></label>
+            </div>
+            <div class="setting"><small>Touch: drag anywhere on the left half to move (down = squish), right half to jump.</small></div>
+            <div class="menu-grid one"><button class="menu-btn" onclick="closeSettings()">Done</button></div>
+        </div>
     </div>
 
     <script>
@@ -108,7 +246,7 @@
         // ================= SAVE DATA =================
         const SAVE_KEY = "squishyBob.save.v2";
         const DEFAULT_STATS = { deaths: 0, maxLevel: 0, highEndless: 0, bitsCollected: 0, flips: 0, flatSquishes: 0, stomps: 0, wallJumps: 0, bossKills: 0 };
-        let save = { unlocked: 1, bestRun: null, bestLevel: {}, ach: {}, muted: false, showTimer: true };
+        let save = { unlocked: 1, bestRun: null, bestLevel: {}, ach: {}, muted: false, showTimer: true, stickAlpha: 0.5, btnAlpha: 0.6 };
         let stats = Object.assign({}, DEFAULT_STATS);
         function loadSave() {
             try {
@@ -269,21 +407,48 @@
         // ================= INPUT =================
         const keys = {};
         let pressed = {};
-        const JUMP_KEYS = [" ", "w", "arrowup"];
-        const SHOOT_KEYS = ["x", "j", "k"];
+        // touch controls write "@"-prefixed virtual keys so they never clash with the keyboard;
+        // "@up" only aims (boss) and is deliberately not a jump key
+        const JUMP_KEYS = [" ", "w", "arrowup", "@jump"];
+        const SHOOT_KEYS = ["x", "j", "k", "@shoot"];
+        const TOUCH_KEYS = ["@left", "@right", "@up", "@down", "@jump", "@shoot"];
         function inputState() {
             const any = list => list.some(k => keys[k]);
             const anyP = list => list.some(k => pressed[k]);
             return {
-                left: any(["a", "arrowleft"]), right: any(["d", "arrowright"]),
-                up: any(["w", "arrowup"]), down: any(["s", "arrowdown"]),
+                left: any(["a", "arrowleft", "@left"]), right: any(["d", "arrowright", "@right"]),
+                up: any(["w", "arrowup", "@up"]), down: any(["s", "arrowdown", "@down"]),
                 jumpPressed: anyP(JUMP_KEYS), jumpHeld: any(JUMP_KEYS),
                 shoot: any(SHOOT_KEYS)
             };
         }
+        function setTouchKey(k, on) {
+            if (on && !keys[k]) pressed[k] = true;
+            keys[k] = !!on;
+        }
+        // Digital directions from a joystick offset. Horizontal wins a wide band so running
+        // never squishes/drops by accident; down needs a deliberate push (>35° below level).
+        function stickDirs(dx, dy, r) {
+            const d = Math.hypot(dx, dy), out = { left: false, right: false, up: false, down: false };
+            if (d < r * 0.25) return out;
+            const nx = dx / d, ny = dy / d;
+            if (nx > 0.38) out.right = true; else if (nx < -0.38) out.left = true;
+            if (d >= r * 0.4) { if (ny > 0.57) out.down = true; else if (ny < -0.57) out.up = true; }
+            return out;
+        }
+        const touch = { layout: false, kbd: false, stick: null, btn: {}, ui: null, flags: {}, settingsOpen: false };
+        const STICK_R = 52;
+        function hints() { return touch.layout && !touch.kbd; }
+        function hint(keyText, touchText) { return hints() ? touchText : keyText; }
+        function releaseTouch() {
+            for (const k of TOUCH_KEYS) keys[k] = false;
+            touch.stick = null; touch.btn = {};
+            touchVisuals();
+        }
         window.addEventListener("keydown", (e) => {
             const k = e.key.toLowerCase();
             Sound.init();
+            if (touch.layout && !touch.kbd && (k.length === 1 || k.startsWith("arrow") || k === "escape" || k === "enter")) setKbd(true);
             const gameplay = gameState === "CAMPAIGN" || gameState === "ENDLESS";
             if ((gameplay || gameState === "SELECT") && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
             if (!keys[k]) pressed[k] = true;
@@ -1424,6 +1589,7 @@
 
         // ================= INPUT HANDLING =================
         function handleKeyPress(k) {
+            if (touch.settingsOpen) { if (k === "escape" || k === "enter") closeSettings(); return; }
             if (k === "n") { Sound.setMuted(!save.muted); return; }
             if (k === "t") { save.showTimer = !save.showTimer; persist(); return; }
             const play = gameState === "CAMPAIGN" || gameState === "ENDLESS";
@@ -1456,21 +1622,195 @@
         }
 
         function selectCell(i) { return { x: 40 + (i % 5) * 148, y: 110 + Math.floor(i / 5) * 105, w: 132, h: 88 }; }
+        const OVER_MENU = { x: W / 2 - 80, y: 404, w: 160, h: 38 };
+        const inRect = (mx, my, c) => mx !== null && mx >= c.x && mx <= c.x + c.w && my >= c.y && my <= c.y + c.h;
+        // mx/my are canvas coords, or null for a tap on the black bars outside the canvas
+        function onScreenTap(mx, my) {
+            Sound.init();
+            if (touch.settingsOpen) return;
+            if (gameState === "SELECT") {
+                if (mx === null) return;
+                for (let i = 0; i < Math.min(save.unlocked, LEVELS.length); i++) {
+                    if (inRect(mx, my, selectCell(i))) { selectIndex = i; beginRun("practice", i); return; }
+                }
+                if (my > 440) goMenu();
+            } else if (gameState === "ACHIEVEMENTS" || (gameState === "CAMPAIGN_WIN" && stateTimer > 60)) goMenu();
+            else if (gameState === "INTRO") beginRun("story", 0);
+            else if (gameState === "ENDLESS_OVER" && stateTimer > 30) { if (inRect(mx, my, OVER_MENU)) goMenu(); else startEndless(); }
+        }
         if (canvas.addEventListener) {
             canvas.addEventListener("click", (ev) => {
-                Sound.init();
                 const r = canvas.getBoundingClientRect();
-                const mx = (ev.clientX - r.left) * W / r.width, my = (ev.clientY - r.top) * H / r.height;
-                if (gameState === "SELECT") {
-                    for (let i = 0; i < Math.min(save.unlocked, LEVELS.length); i++) {
-                        const c = selectCell(i);
-                        if (mx >= c.x && mx <= c.x + c.w && my >= c.y && my <= c.y + c.h) { selectIndex = i; beginRun("practice", i); return; }
-                    }
-                    if (my > 440) goMenu();
-                } else if (gameState === "ACHIEVEMENTS" || (gameState === "CAMPAIGN_WIN" && stateTimer > 60)) goMenu();
-                else if (gameState === "INTRO") beginRun("story", 0);
-                else if (gameState === "ENDLESS_OVER" && stateTimer > 30) startEndless();
+                onScreenTap((ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height);
             });
+        }
+
+        // ================= MOBILE: LAYOUT, TOUCH CONTROLS, SETTINGS =================
+        function setClass(name, on) {
+            if (touch.flags[name] === on) return;
+            touch.flags[name] = on;
+            if (touch.ui) touch.ui.de.classList.toggle(name, on);
+        }
+        function setTouchLayout(on) { touch.layout = on; setClass("touch", on); fitCanvas(); }
+        function setKbd(on) { touch.kbd = on; setClass("kbd", on); if (on) releaseTouch(); }
+        function pauseAction(a) {
+            if (a === "resume") { paused = false; sfx("menu"); }
+            else if (a === "respawn") { handleKeyPress("r"); paused = false; }
+            else if (a === "menu") goMenu();
+        }
+        function openSettings() {
+            Sound.init(); sfx("menu");
+            // drop focus from the button that opened us, or Enter (which closes settings) would re-click it
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+            touch.settingsOpen = true; setClass("settings-open", true);
+            refreshSettings();
+        }
+        function closeSettings() {
+            touch.settingsOpen = false; setClass("settings-open", false);
+            persist(); sfx("menu");
+        }
+        function refreshSettings() {
+            const ui = touch.ui; if (!ui) return;
+            ui.setStick.value = Math.round(save.stickAlpha * 100); ui.valStick.textContent = ui.setStick.value + "%";
+            ui.setBtn.value = Math.round(save.btnAlpha * 100); ui.valBtn.textContent = ui.setBtn.value + "%";
+            ui.setSound.checked = !save.muted; ui.setTimer.checked = !!save.showTimer;
+            touchVisuals();
+        }
+        function touchVisuals() {
+            const ui = touch.ui; if (!ui) return;
+            const s = touch.stick, a = save.stickAlpha, b = save.btnAlpha;
+            ui.stick.classList.toggle("active", !!s);
+            ui.stick.style.left = s ? s.bx + "px" : "";
+            ui.stick.style.top = s ? s.by + "px" : "";
+            ui.stick.style.opacity = s ? Math.min(1, a * 1.5) : a;
+            ui.knob.style.transform = s ? "translate(" + s.kx + "px," + s.ky + "px)" : "";
+            ui.jump.style.opacity = ui.shoot.style.opacity = b;
+            ui.pause.style.opacity = Math.max(0.35, b);
+            ui.jump.classList.toggle("on", !!keys["@jump"]);
+            ui.shoot.classList.toggle("on", !!keys["@shoot"]);
+        }
+        // Per frame: mirror game state into <html> classes (only touches the DOM on change)
+        function syncTouchUI() {
+            const play = gameState === "CAMPAIGN" || gameState === "ENDLESS";
+            const was = touch.flags.playing;
+            setClass("playing", play && !paused && !touch.settingsOpen);
+            setClass("paused", play && paused);
+            setClass("boss", play && !!LV.boss);
+            if (was && !touch.flags.playing) releaseTouch();
+        }
+
+        // Canvas backing store follows the display's pixel density (1x or 2x) so text stays sharp
+        let RS = 1;
+        function fitCanvas() {
+            if (!canvas.getBoundingClientRect) return;
+            const w = canvas.getBoundingClientRect().width, s = w * (window.devicePixelRatio || 1) > 960 ? 2 : 1;
+            if (s !== RS) { RS = s; canvas.width = W * s; canvas.height = H * s; }
+        }
+        // shadowBlur ignores the canvas transform, so scale it with the backing store to keep glows the same
+        (function scaleShadow() {
+            const P = typeof CanvasRenderingContext2D !== "undefined" && CanvasRenderingContext2D.prototype;
+            const d = P && Object.getOwnPropertyDescriptor(P, "shadowBlur");
+            if (!d || !(ctx instanceof CanvasRenderingContext2D)) return;
+            Object.defineProperty(ctx, "shadowBlur", { get() { return d.get.call(this) / RS; }, set(v) { d.set.call(this, v * RS); } });
+        })();
+
+        // The whole right half is the action zone: JUMP, or in the boss arena whichever button is nearer
+        function actionAt(x, y) {
+            if (x < window.innerWidth / 2) return null;
+            if (!touch.flags.boss) return "jump";
+            const dist = el => { const r = el.getBoundingClientRect(); return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)); };
+            return dist(touch.ui.shoot) < dist(touch.ui.jump) ? "shoot" : "jump";
+        }
+        function onTouchDown(e) {
+            e.preventDefault();
+            const ui = touch.ui, x = e.clientX, y = e.clientY;
+            const pr = ui.pause.getBoundingClientRect();
+            if (x >= pr.left - 10 && x <= pr.right + 10 && y >= pr.top - 10 && y <= pr.bottom + 10) { handleKeyPress("p"); return; }
+            try { ui.root.setPointerCapture(e.pointerId); } catch (err) { }
+            const b = actionAt(x, y);
+            if (b) { touch.btn[e.pointerId] = b; setTouchKey("@" + b, true); }
+            else if (x < window.innerWidth / 2 && !touch.stick) {
+                const m = 62;
+                touch.stick = { id: e.pointerId, bx: clamp(x, m, window.innerWidth - m), by: clamp(y, m, window.innerHeight - m), kx: 0, ky: 0 };
+                moveStick(x, y);
+            }
+            touchVisuals();
+        }
+        function moveStick(x, y) {
+            const s = touch.stick;
+            let dx = x - s.bx, dy = y - s.by;
+            const d = Math.hypot(dx, dy);
+            if (d > STICK_R) { s.bx = x - dx / d * STICK_R; s.by = y - dy / d * STICK_R; dx = x - s.bx; dy = y - s.by; }
+            s.kx = dx; s.ky = dy;
+            const dir = stickDirs(dx, dy, STICK_R);
+            setTouchKey("@left", dir.left); setTouchKey("@right", dir.right);
+            setTouchKey("@up", dir.up); setTouchKey("@down", dir.down);
+        }
+        function onTouchMove(e) {
+            if (touch.stick && e.pointerId === touch.stick.id) { moveStick(e.clientX, e.clientY); touchVisuals(); return; }
+            const cur = touch.btn[e.pointerId], b = cur && actionAt(e.clientX, e.clientY);
+            if (b && b !== cur) {
+                touch.btn[e.pointerId] = b;
+                if (!Object.values(touch.btn).includes(cur)) setTouchKey("@" + cur, false);
+                setTouchKey("@" + b, true); touchVisuals();
+            }
+        }
+        function onTouchUp(e) {
+            if (touch.stick && e.pointerId === touch.stick.id) {
+                touch.stick = null;
+                setTouchKey("@left", false); setTouchKey("@right", false); setTouchKey("@up", false); setTouchKey("@down", false);
+            }
+            const b = touch.btn[e.pointerId];
+            if (b) { delete touch.btn[e.pointerId]; if (!Object.values(touch.btn).includes(b)) setTouchKey("@" + b, false); }
+            touchVisuals();
+        }
+        function unlockAudio() {
+            Sound.init();
+            const c = Sound.ctx;
+            if (c && c.state !== "running" && !document.hidden) { try { c.resume().catch(() => { }); } catch (err) { } }
+        }
+        function initMobile() {
+            const $ = id => document.getElementById(id);
+            const de = document.documentElement, root = $("touch-ui");
+            if (!de || !root || !root.addEventListener) return;
+            touch.ui = {
+                de, root, stick: $("stick"), knob: $("stick-knob"), jump: $("btn-jump"), shoot: $("btn-shoot"), pause: $("btn-pause"),
+                setStick: $("set-stick"), valStick: $("val-stick"), setBtn: $("set-btn"), valBtn: $("val-btn"), setSound: $("set-sound"), setTimer: $("set-timer")
+            };
+            const ui = touch.ui;
+            root.addEventListener("pointerdown", onTouchDown);
+            root.addEventListener("pointermove", onTouchMove);
+            root.addEventListener("pointerup", onTouchUp);
+            root.addEventListener("pointercancel", onTouchUp);
+            root.addEventListener("lostpointercapture", onTouchUp);
+            root.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+            root.addEventListener("contextmenu", e => e.preventDefault());
+
+            ui.setStick.addEventListener("input", () => { save.stickAlpha = ui.setStick.value / 100; refreshSettings(); });
+            ui.setBtn.addEventListener("input", () => { save.btnAlpha = ui.setBtn.value / 100; refreshSettings(); });
+            ui.setSound.addEventListener("change", () => { Sound.setMuted(!ui.setSound.checked); });
+            ui.setTimer.addEventListener("change", () => { save.showTimer = ui.setTimer.checked; persist(); });
+
+            window.addEventListener("pointerdown", e => {
+                if (e.pointerType === "touch") { if (!touch.layout) setTouchLayout(true); if (touch.kbd) setKbd(false); }
+                unlockAudio();
+            }, true);
+            window.addEventListener("pointerup", unlockAudio, true);
+            // taps on the black bars act like taps on the canvas for "tap to continue" screens
+            window.addEventListener("click", e => { if (touch.layout && (e.target === document.body || e.target === de)) onScreenTap(null, null); });
+            window.addEventListener("resize", () => { fitCanvas(); if (touch.stick) releaseTouch(); });
+            if (typeof ResizeObserver !== "undefined") new ResizeObserver(fitCanvas).observe(canvas);
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    if (touch.layout && (gameState === "CAMPAIGN" || gameState === "ENDLESS")) paused = true;
+                    for (const k in keys) keys[k] = false;
+                    releaseTouch();
+                    if (Sound.ctx && Sound.ctx.suspend) Sound.ctx.suspend().catch(() => { });
+                } else unlockAudio();
+            });
+
+            if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) setTouchLayout(true);
+            fitCanvas(); touchVisuals();
         }
 
 
@@ -1602,7 +1942,9 @@
                 const key = kx + "," + ky;
                 let cv = chunkCache.get(key);
                 if (!cv) { cv = buildChunk(kx, ky); chunkCache.set(key, cv); }
+                ctx.imageSmoothingEnabled = RS === 1;
                 ctx.drawImage(cv, Math.round(kx * CH * T - cam.x), Math.round(ky * CH * T - cam.y));
+                ctx.imageSmoothingEnabled = true;
             }
             if (LV.endless) {
                 // partial last chunk: draw live
@@ -1978,6 +2320,7 @@
             if (save.muted) txt("🔇", W - 30, H - 12, 14, "#888");
             if (paused) {
                 ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(0, 0, W, H);
+                if (hints()) return; // the HTML pause panel takes over on touch
                 txt("PAUSED", W / 2, H / 2 - 20, 40, "#00f0ff", "center", 16);
                 txt("P / ESC resume   ·   R respawn   ·   M menu   ·   T timer   ·   N mute", W / 2, H / 2 + 20, 12, "#ccc", "center");
             }
@@ -1991,7 +2334,7 @@
                 const m = introMessages[i], n = i < introTextIndex ? m.length : Math.floor(introTimer / 2);
                 txt(m.slice(0, n), 60, 150 + i * 40, 17, i === introTextIndex ? "#00f0ff" : "#5a7a8a", "left", i === introTextIndex ? 6 : 0);
             }
-            txt("SPACE to skip", W - 20, H - 20, 12, "#666", "right");
+            txt(hint("SPACE to skip", "TAP to skip"), W - 20, H - 20, 12, "#666", "right");
         }
         function drawSelect() {
             drawBackground("city"); ctx.fillStyle = "rgba(0,0,10,0.7)"; ctx.fillRect(0, 0, W, H);
@@ -2006,7 +2349,7 @@
                 if (!lock) txt(save.bestLevel[i] ? "PB " + fmtTime(save.bestLevel[i]) : "--:--.--", c.x + 8, c.y + 72, 11, save.bestLevel[i] ? "#ffd400" : "#666");
                 if (LEVELS[i].boss && !lock) txt("BOSS", c.x + c.w - 8, c.y + 20, 11, "#ff2050", "right");
             }
-            txt("ARROWS select · ENTER play · ESC back", W / 2, H - 22, 12, "#888", "center");
+            txt(hint("ARROWS select · ENTER play · ESC back", "TAP a sector to play  ·  TAP here for menu"), W / 2, H - 22, 12, "#888", "center");
         }
         function drawAchievements() {
             drawBackground("cryo"); ctx.fillStyle = "rgba(0,0,10,0.75)"; ctx.fillRect(0, 0, W, H);
@@ -2018,7 +2361,7 @@
             });
             const s = "Deaths " + stats.deaths + " · Stomps " + stats.stomps + " · Wall-jumps " + stats.wallJumps + " · Bits " + stats.bitsCollected + " · Endless best " + stats.highEndless + "m";
             txt(s, W / 2, H - 46, 11, "#9cf", "center");
-            txt("Best full run: " + (save.bestRun ? fmtTime(save.bestRun) : "--") + "   ·   ESC / click to return", W / 2, H - 22, 12, "#888", "center");
+            txt("Best full run: " + (save.bestRun ? fmtTime(save.bestRun) : "--") + "   ·   " + hint("ESC / click to return", "TAP to return"), W / 2, H - 22, 12, "#888", "center");
         }
         function drawWin() {
             drawBackground("city"); ctx.fillStyle = "rgba(0,0,10,0.55)"; ctx.fillRect(0, 0, W, H);
@@ -2031,7 +2374,7 @@
             else if (!r.full) txt("(start from Sector 1 for an official run)", W / 2, 284, 12, "#888", "center");
             txt("Deaths " + (r.deaths || 0) + "   ·   Bits " + (r.bits || 0), W / 2, 320, 14, "#ccc", "center");
             if (save.bestRun) txt("Best full run " + fmtTime(save.bestRun), W / 2, 350, 13, "#aaa", "center");
-            if (stateTimer > 60) txt("ENTER to continue", W / 2, 420, 14, "#fff", "center");
+            if (stateTimer > 60) txt(hint("ENTER to continue", "TAP to continue"), W / 2, 420, 14, "#fff", "center");
         }
         function drawEndlessOver() {
             ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
@@ -2039,10 +2382,16 @@
             txt((lastResult ? lastResult.dist : 0) + "m", W / 2, 240, 44, "#00f0ff", "center", 14);
             if (lastResult && lastResult.best) txt("NEW RECORD!", W / 2, 280, 16, "#3dff8f", "center");
             txt("BEST " + stats.highEndless + "m", W / 2, 310, 14, "#aaa", "center");
-            if (stateTimer > 30) txt("R / ENTER retry   ·   ESC menu", W / 2, 380, 14, "#fff", "center");
+            if (stateTimer > 30) {
+                txt(hint("R / ENTER retry   ·   ESC menu", "TAP to retry"), W / 2, 380, 14, "#fff", "center");
+                const b = OVER_MENU;
+                ctx.strokeStyle = "#0ff"; ctx.lineWidth = 2; ctx.strokeRect(b.x, b.y, b.w, b.h);
+                txt("MENU", W / 2, b.y + 25, 15, "#0ff", "center", 6);
+            }
         }
 
         // ================= RENDER LOOP =================
+        const TOUCH_SIGNS = { "A/D MOVE  -  SPACE JUMP": "LEFT THUMB MOVES  -  TAP JUMP", "HOLD S TO SQUISH": "DRAG DOWN: SQUISH" };
         function drawWorld() {
             const th = LV.colTheme ? LV.colTheme[clamp(Math.floor((cam.x + W / 2) / T), 0, LV.colTheme.length - 1)] : LV.theme;
             drawBackground(th);
@@ -2050,7 +2399,7 @@
             if (cam.shake > 0) ctx.translate((Math.random() - 0.5) * cam.shake, (Math.random() - 0.5) * cam.shake);
             const sx = cam.x, sy = cam.y;
             cam.x = Math.round(cam.x); cam.y = Math.round(cam.y);
-            for (const t of LV.texts) { const x = t.x - cam.x, y = t.y - cam.y; if (x > -300 && x < W + 300) txt(t.s, x, y, 13, "rgba(255,255,255,0.75)", "center", 6); }
+            for (const t of LV.texts) { const x = t.x - cam.x, y = t.y - cam.y; if (x > -300 && x < W + 300) txt(hints() && TOUCH_SIGNS[t.s] || t.s, x, y, 13, "rgba(255,255,255,0.75)", "center", 6); }
             drawSawTracks();
             drawTiles();
             LV.checkpoints.forEach(drawCheckpoint);
@@ -2073,6 +2422,7 @@
             ctx.fillStyle = "rgba(0,0,0,0.08)"; for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
         }
         function render() {
+            ctx.setTransform(RS, 0, 0, RS, 0, 0);
             ctx.clearRect(0, 0, W, H);
             switch (gameState) {
                 case "MENU": cam.x += 0.5; cam.y = 0; drawBackground(["city", "foundry", "sewer", "cryo", "void"][Math.floor(frameCount / 600) % 5]); break;
@@ -2099,6 +2449,7 @@
             if (steps >= 5) acc = 0;
             Sound.update();
             render();
+            syncTouchUI();
             requestAnimationFrame(frame);
         }
 
@@ -2112,6 +2463,7 @@
             get bullets() { return bullets; }, get bossShots() { return bossShots; }, get transition() { return transition; }, get endless() { return endless; }
         };
         updateMenuBest();
+        initMobile();
         if (!SIM.headless) { Sound.music("menu"); requestAnimationFrame(frame); }
     </script>
 </body>
