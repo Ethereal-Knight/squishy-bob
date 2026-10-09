@@ -1,5 +1,5 @@
 // Headless solvability checker: BFS over macro-actions using the real game physics.
-// Usage: node tools/verify-levels.js [levelNumber]
+// Usage: node tools/verify-levels.js [levelNumber ...]
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -75,9 +75,10 @@ function verify(i, limit) {
         const s = pop();
         for (const a of ACTIONS) {
             restore(s);
-            let dead = false, win = false;
+            let dead = false, win = false, elapsed = 0;
             for (let f = 0; f < 6; f++) {
-                G.stepPlayer({ left: a.dir < 0, right: a.dir > 0, up: false, down: !!a.down, jumpPressed: !!a.jump && f === 0, jumpHeld: a.jump === 1, shoot: false });
+                G.stepPlayer({ left: a.dir < 0, right: a.dir > 0, up: false, down: !!a.down, jumpPressed: !!a.jump && f === 0, jumpHeld: a.jump === 1 });
+                elapsed = f + 1;
                 const hb = G.playerHurtbox();
                 if (player.y > L.h * T + 60 || G.tileHazardHit(hb) || staticSaws.some(sw => {
                     const nx = Math.max(hb.x, Math.min(sw.x, hb.x + hb.w)), ny = Math.max(hb.y, Math.min(sw.y, hb.y + hb.h));
@@ -85,7 +86,7 @@ function verify(i, limit) {
                 })) { dead = true; break; }
                 if (L.goal && G.overlap(hb, L.goal)) { win = true; break; }
             }
-            if (win) return { ok: true, states: seen.size };
+            if (win) return { ok: true, states: seen.size, ticks: s.d * 6 + elapsed };
             if (dead) continue;
             const n = snap(); n.d = s.d + 1; const k = key(n);
             if (seen.has(k)) continue;
@@ -97,7 +98,11 @@ function verify(i, limit) {
     return { ok: false, states: seen.size, maxCol: Math.floor(best.x / T), minRow: Math.floor(best.y / T) };
 }
 
-const only = process.argv[2] ? [Number(process.argv[2]) - 1] : G.LEVELS.map((_, i) => i);
+const only = process.argv.length > 2 ? process.argv.slice(2).map(n => Number(n) - 1) : G.LEVELS.map((_, i) => i);
+if (only.some(i => !Number.isInteger(i) || i < 0 || i >= G.LEVELS.length)) {
+    console.error(`Sector numbers must be integers from 1 to ${G.LEVELS.length}.`);
+    process.exit(1);
+}
 let fail = 0;
 for (const i of only) {
     const t0 = Date.now();
