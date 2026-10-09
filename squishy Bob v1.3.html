@@ -10,43 +10,50 @@
             background: radial-gradient(ellipse at center, #120626 0%, #050510 70%);
             color: #fff; font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; overflow-x: hidden; overflow-y: auto; user-select: none;
+            height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
         }
-        #game-container { position: relative; width: min(800px, calc(100vw - 24px)); aspect-ratio: 8 / 5; }
+        #game-container {
+            position: relative; width: min(100vw, 160vh); width: min(100vw, 160dvh); aspect-ratio: 8 / 5;
+            outline: 4px solid #0ff; outline-offset: -4px; border-radius: 8px; overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.4); container-type: size;
+        }
         canvas {
-            display: block; width: 100%; height: auto; box-sizing: border-box;
-            background-color: #080816; border: 4px solid #0ff; border-radius: 8px;
-            box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+            display: block; width: 100%; height: 100%; background-color: #080816;
         }
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(8, 8, 20, 0.72);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 8px; z-index: 10;
+            border-radius: 8px; z-index: 10; overflow-y: auto;
         }
         #main-menu h1 {
             color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
-            font-size: clamp(26px, 8vw, 44px); margin: 0; letter-spacing: 2px;
+            font-size: 8.8cqh; margin: 0; letter-spacing: 2px;
         }
         #main-menu h2 {
             color: #ff00ff; text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff;
-            margin-top: 5px; margin-bottom: 14px; font-size: clamp(10px, 2.5vw, 16px);
+            margin-top: 1cqh; margin-bottom: 2cqh; font-size: 3.2cqh;
             letter-spacing: 1px; text-align: center; padding: 0 12px;
         }
-        #menu-best { color: #ffd400; font-size: 13px; min-height: 16px; margin-bottom: 4px; text-shadow: 0 0 6px #ffd400; }
+        #menu-best { color: #ffd400; font-size: 2.6cqh; min-height: 3.2cqh; margin-bottom: 0.8cqh; text-shadow: 0 0 6px #ffd400; }
         .menu-btn {
-            margin-top: 9px; padding: 9px 35px; font-size: 15px; font-family: inherit; font-weight: bold;
+            margin-top: 1.4cqh; padding: 1.4cqh 4cqh; font-size: 3cqh; font-family: inherit; font-weight: bold;
             background: rgba(0, 255, 255, 0.05); color: #0ff; border: 2px solid #0ff;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); cursor: pointer; transition: all 0.2s ease-in-out;
-            width: min(320px, calc(100% - 40px)); text-transform: uppercase; border-radius: 4px;
+            width: 64cqh; max-width: 90%; text-transform: uppercase; border-radius: 4px; flex-shrink: 0;
         }
         .menu-btn:hover { background: #0ff; color: #000; box-shadow: 0 0 20px #0ff; transform: scale(1.03); }
         .menu-btn.alt { color: #ff2bd6; border-color: #ff2bd6; box-shadow: 0 0 10px rgba(255, 43, 214, 0.5); background: rgba(255, 43, 214, 0.05); }
         .menu-btn.alt:hover { background: #ff2bd6; color: #000; }
-        .controls {
-            margin-top: 12px; color: #0ff; font-size: 13px; text-shadow: 0 0 5px #0ff; text-align: center;
-            max-width: calc(100vw - 24px); line-height: 2;
+        #help-overlay {
+            position: absolute; inset: 0; z-index: 20; background: rgba(8, 8, 20, 0.96);
+            display: flex; align-items: center; justify-content: center;
         }
+        #help-overlay[hidden] { display: none; }
+        .help-panel { width: 90%; max-height: 100%; overflow-y: auto; text-align: center; font-size: 2.8cqh; }
+        .help-panel h2 { color: #0ff; font-size: 5cqh; margin: 3cqh 0; }
+        .help-panel p { line-height: 1.8; margin: 2cqh 0; }
+        .help-panel .menu-btn { margin-bottom: 3cqh; }
         kbd {
             background: #111; padding: 3px 6px; border-radius: 4px; color: #ff00ff; font-weight: bold;
             border: 1px solid #ff00ff; box-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
@@ -66,13 +73,23 @@
             <button class="menu-btn" onclick="startGame('ENDLESS')">Endless Cyber Run</button>
             <button class="menu-btn" onclick="showAchievements()">Trophies &amp; Stats</button>
             <button class="menu-btn alt" onclick="openShop()">Bits Shop: Skins &amp; Themes</button>
+            <button class="menu-btn" onclick="toggleHelp()">How to Play</button>
         </div>
-    </div>
-
-    <div class="controls">
-        Move <kbd>A</kbd><kbd>D</kbd>/<kbd>←</kbd><kbd>→</kbd> | Jump / Double / Wall-Jump <kbd>Space</kbd>/<kbd>W</kbd>/<kbd>↑</kbd> | Squish / Drop <kbd>S</kbd>/<kbd>↓</kbd> | Boss: dodge, then bounce on the exposed core!<br>
-        Respawn <kbd>R</kbd> | Pause <kbd>P</kbd> | Timer <kbd>T</kbd> | Mute <kbd>N</kbd> | Menu <kbd>M</kbd>
-        <br>Earn 1 star for finishing, 2 for a quick clear, 3 for a fast clear. Collect Bits to buy permanent cosmetics.
+        <div id="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+            <div class="help-panel">
+                <h2 id="help-title">HOW TO PLAY</h2>
+                <p>Move <kbd>A / D</kbd> or <kbd>← / →</kbd><br>
+                    Jump / Double / Wall-Jump <kbd>Space / W / ↑</kbd><br>
+                    Squish / Drop through floors <kbd>S / ↓</kbd></p>
+                <p><kbd>R</kbd> Respawn &nbsp; <kbd>P / Esc</kbd> Pause &nbsp; <kbd>M</kbd> Menu<br>
+                    <kbd>T</kbd> Timer &nbsp; <kbd>N</kbd> Mute &nbsp; <kbd>H</kbd> Help</p>
+                <p>Earn 1 star for a clear, 2 for a quick clear, 3 for a fast clear.<br>
+                    Each sector shows its time targets. Your best stars never decrease.<br>
+                    Collect Bits to buy permanent skins and themes in the shop.</p>
+                <p>Boss: dodge the dive, then jump onto the exposed core!</p>
+                <button id="help-close" class="menu-btn" onclick="toggleHelp()">Back to Game / Menu</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -83,6 +100,14 @@
         const menuEl = document.getElementById("main-menu");
         const W = 800, H = 500, T = 32;
         const SIM = { headless: typeof window !== "undefined" && !!window.__SQUISHY_HEADLESS };
+        function resizeCanvas() {
+            if (SIM.headless) return;
+            const rect = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+            const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.max(1, Math.round(rect.height * dpr));
+            if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+            ctx.setTransform(width / W, 0, 0, height / H, 0, 0);
+        }
+        window.addEventListener("resize", resizeCanvas);
 
         const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -320,6 +345,9 @@
         }
         window.addEventListener("keydown", (e) => {
             const k = e.key.toLowerCase();
+            if (helpOpen && k === "tab") {
+                e.preventDefault(); document.getElementById("help-close").focus(); return;
+            }
             Sound.init();
             const gameplay = gameState === "CAMPAIGN" || gameState === "ENDLESS";
             if ((gameplay || gameState === "SELECT" || gameState === "SHOP") && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
@@ -1076,9 +1104,9 @@
         ];
         const BOSS_LEVEL = LEVELS.length - 1;
         const STAR_TIMES = [
-            [35, 65], [35, 65], [50, 90], [55, 100], [50, 90], [55, 100], [45, 80],
-            [100, 180], [75, 130], [50, 90], [40, 75], [65, 110], [90, 150],
-            [25, 50], [35, 65], [30, 55], [25, 45], [30, 55], [100, 160]
+            [7, 10], [35, 40], [50, 57], [55, 63], [50, 57], [55, 63], [45, 51],
+            [100, 110], [75, 85], [50, 57], [40, 46], [65, 74], [90, 100],
+            [25, 28], [35, 40], [30, 34], [25, 28], [30, 34], [100, 110]
         ];
         function starsForTime(index, ticks) {
             const [fast, quick] = STAR_TIMES[index];
@@ -1114,6 +1142,21 @@
 
         // ================= GAME STATE =================
         let gameState = "MENU", runMode = "story", paused = false;
+        let helpOpen = false, helpReturnFocus = null;
+        function toggleHelp() {
+            helpOpen = !helpOpen;
+            const overlay = document.getElementById("help-overlay");
+            overlay.hidden = !helpOpen;
+            for (const k in keys) keys[k] = false;
+            pressed = {};
+            if (helpOpen) {
+                helpReturnFocus = document.activeElement;
+                document.getElementById("help-close").focus?.();
+            } else {
+                helpReturnFocus?.focus?.();
+                helpReturnFocus = null;
+            }
+        }
         let LV = buildLevel(0), levelIndex = 0;
         const cam = { x: 0, y: 0, shake: 0 };
         let particles = [], bossShots = [], boss = null;
@@ -1477,6 +1520,7 @@
 
         // ================= MAIN UPDATE =================
         function update() {
+            if (helpOpen) return;
             frameCount++; stateTimer++;
             updateParticles();
             toasts.forEach(t => t.t--); toasts = toasts.filter(t => t.t > 0);
@@ -1557,6 +1601,11 @@
 
         // ================= INPUT HANDLING =================
         function handleKeyPress(k) {
+            if (helpOpen) {
+                if (k === "h" || k === "escape" || k === "p") toggleHelp();
+                return;
+            }
+            if (k === "h") { toggleHelp(); return; }
             if (k === "n") { Sound.setMuted(!save.muted); return; }
             if (k === "t") { save.showTimer = !save.showTimer; persist(); return; }
             const play = gameState === "CAMPAIGN" || gameState === "ENDLESS";
@@ -1604,6 +1653,7 @@
                 Sound.init();
                 const r = canvas.getBoundingClientRect();
                 const mx = (ev.clientX - r.left) * W / r.width, my = (ev.clientY - r.top) * H / r.height;
+                if ((gameState === "CAMPAIGN" || gameState === "ENDLESS") && mx <= 126 && my >= H - 36) { toggleHelp(); return; }
                 if (gameState === "SELECT") {
                     for (let i = 0; i < Math.min(save.unlocked, LEVELS.length); i++) {
                         const c = selectCell(i);
@@ -2137,10 +2187,12 @@
                 ctx.globalAlpha = 1;
             });
             if (save.muted) txt("🔇", W - 30, H - 12, 14, "#888");
+            ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(8, H - 34, 118, 26);
+            txt("[H] CONTROLS", 16, H - 16, 12, "#0ff");
             if (paused) {
                 ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(0, 0, W, H);
                 txt("PAUSED", W / 2, H / 2 - 20, 40, "#00f0ff", "center", 16);
-                txt("P / ESC resume   ·   R respawn   ·   M menu   ·   T timer   ·   N mute", W / 2, H / 2 + 20, 12, "#ccc", "center");
+                txt("P / ESC resume   ·   H controls   ·   R respawn   ·   M menu", W / 2, H / 2 + 20, 12, "#ccc", "center");
             }
         }
 
@@ -2267,6 +2319,7 @@
             ctx.fillStyle = "rgba(0,0,0,0.08)"; for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
         }
         function render() {
+            resizeCanvas();
             ctx.clearRect(0, 0, W, H);
             switch (gameState) {
                 case "MENU": cam.x += 0.5; cam.y = 0; drawBackground(["city", "foundry", "sewer", "cryo", "void"][Math.floor(frameCount / 600) % 5]); break;

@@ -10,20 +10,28 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 function createGame(options = {}) {
     const listeners = {};
     const canvasListeners = {};
-    const texts = [], warnings = [], colors = [];
+    const texts = [], warnings = [], colors = [], transforms = [];
     const drawing = new Proxy({
         createLinearGradient: () => ({ addColorStop: (_offset, color) => colors.push(color) }),
         createRadialGradient: () => ({ addColorStop: () => {} }),
-        fillText: text => texts.push(text)
+        fillText: text => texts.push(text),
+        setTransform: (...args) => transforms.push(args)
     }, { get: (target, key) => key in target ? target[key] : () => {} });
-    const menu = { style: {} };
+    const menu = { style: {}, focus: () => {} };
+    const helpOverlay = { hidden: true };
+    const helpClose = { focus: () => {} };
+    const rect = { left: 0, top: 0, width: 800, height: 500, ...options.rect };
     const canvas = { width: 800, height: 500, getContext: () => drawing,
         addEventListener: (name, handler) => { canvasListeners[name] = handler; },
-        getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 500 }) };
+        getBoundingClientRect: () => rect };
     const storage = options.storage || new Map();
     const context = vm.createContext({
-        document: { getElementById: id => id === "gameCanvas" ? canvas : menu, createElement: () => canvas },
-        window: { addEventListener: (name, handler) => { listeners[name] = handler; } },
+        document: {
+            getElementById: id => ({ gameCanvas: canvas, "help-overlay": helpOverlay, "help-close": helpClose }[id] || menu),
+            createElement: () => canvas,
+            activeElement: menu
+        },
+        window: { devicePixelRatio: options.dpr || 1, addEventListener: (name, handler) => { listeners[name] = handler; } },
         localStorage: {
             getItem: key => storage.get(key) || null,
             setItem: (key, value) => {
@@ -36,8 +44,9 @@ function createGame(options = {}) {
     });
     vm.runInContext(script, context);
     return {
-        menu,
+        menu, canvas, rect, helpOverlay, transforms,
         storage, texts, warnings, colors,
+        resize() { listeners.resize(); },
         run: code => vm.runInContext(code, context),
         click(x, y) { canvasListeners.click({ clientX: x, clientY: y }); },
         press(key) {
@@ -250,6 +259,67 @@ test("star thresholds are inclusive for every sector and never erase better awar
     assert.equal(game.run("save.bestLevel[13]"), 1500);
     const reloaded = createGame({ storage: game.storage });
     assert.equal(reloaded.run("save.stars[13]"), 3);
+});
+
+test("level one rewards a six-second clear and star target gaps stay tight", () => {
+    const game = createGame();
+    assert.deepEqual(Array.from(game.run("STAR_TIMES[0]")), [7, 10]);
+    assert.equal(game.run("starsForTime(0, 6 * 60)"), 3);
+    assert.equal(game.run("starsForTime(0, 7 * 60 + 1)"), 2);
+    assert.equal(game.run("starsForTime(0, 10 * 60 + 1)"), 1);
+    assert.equal(game.run("STAR_TIMES.length"), game.run("LEVELS.length"));
+    assert.ok(game.run("STAR_TIMES.every(([fast, quick]) => quick - fast <= 10 && quick <= fast * 1.5)"));
+});
+
+test("integrated help freezes play and timers without changing the pause state", () => {
+    const game = createGame();
+    game.run("startSpeedrun(); update();");
+    game.press("h"); game.release("h");
+    assert.equal(game.helpOverlay.hidden, false);
+    assert.equal(game.run("helpOpen"), true);
+    assert.equal(game.press("Tab"), true, "focus stays inside help");
+    const before = game.run("JSON.stringify([runTicks, levelTicks, player.x, player.y, banner.t, frameCount])");
+    game.run("for (let i = 0; i < 120; i++) update();");
+    assert.equal(game.run("JSON.stringify([runTicks, levelTicks, player.x, player.y, banner.t, frameCount])"), before);
+    game.press("Escape"); game.release("Escape");
+    assert.equal(game.helpOverlay.hidden, true);
+    assert.equal(game.run("paused"), false);
+    game.run("update();");
+    assert.equal(game.run("runTicks"), 2);
+    game.press("p"); game.release("p");
+    game.click(40, 480);
+    assert.equal(game.run("helpOpen"), true);
+    game.run("toggleHelp(); update();");
+    assert.equal(game.run("paused"), true);
+    assert.equal(game.run("runTicks"), 2);
+    game.run("paused = false; startEndless();");
+    game.press("h");
+    const distance = game.run("endless.dist");
+    game.run("for (let i = 0; i < 120; i++) update();");
+    assert.equal(game.run("endless.dist"), distance);
+    game.run("toggleHelp(); goMenu(); toggleHelp();");
+    assert.equal(game.menu.style.display, "flex", "menu remains behind help");
+    assert.equal(game.helpOverlay.hidden, false);
+});
+
+test("canvas scales sharply on large and high-DPI screens with correct click mapping", () => {
+    const game = createGame({ dpr: 2, rect: { left: 100, top: 20, width: 1600, height: 1000 } });
+    game.run("render();");
+    assert.equal(game.canvas.width, 3200);
+    assert.equal(game.canvas.height, 2000);
+    assert.deepEqual(game.transforms.at(-1), [4, 0, 0, 4, 0, 0]);
+    game.run("openShop(); save.wallet = 100;");
+    const card = game.run("shopCell(1)");
+    game.click(100 + (card.x + 10) * 2, 20 + (card.y + 10) * 2);
+    assert.equal(game.run("save.skin"), "berry");
+    game.rect.width = 400; game.rect.height = 250;
+    game.resize();
+    assert.equal(game.canvas.width, 800);
+    assert.equal(game.canvas.height, 500);
+    assert.deepEqual(game.transforms.at(-1), [1, 0, 0, 1, 0, 0]);
+    game.run("startSpeedrun();");
+    game.click(100 + 40 * 0.5, 20 + 480 * 0.5);
+    assert.equal(game.run("helpOpen"), true);
 });
 
 test("campaign advances through all five new sectors into the final arena", () => {
